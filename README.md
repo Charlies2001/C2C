@@ -203,14 +203,16 @@ npm run dev
 
 打开 http://localhost:5173 → 点击右上角 **设置**（齿轮图标）→ 选择供应商 → 输入 API Key → 开始学习。
 
-### Docker 一键启动
+### Docker 一键启动（推荐）
+
+> 需要先安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Mac/Windows）或 [Docker Engine](https://docs.docker.com/engine/install/)（Linux）。
 
 ```bash
 cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-打开 http://localhost:3000。
+打开 http://localhost:3000。无需安装 Node.js 或 Python。
 
 ---
 
@@ -375,11 +377,13 @@ npm run dev
 
 Open http://localhost:5173 → click **Settings** (gear icon) → select provider → enter API key → start learning.
 
-### Docker
+### Docker (Recommended)
+
+> Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac/Windows) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux).
 
 ```bash
 cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. No Node.js or Python installation needed.
