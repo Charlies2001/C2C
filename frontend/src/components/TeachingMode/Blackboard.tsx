@@ -160,7 +160,6 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
   const currentSection = useStore((s) => s.currentSection);
   const isTeachingLoading = useStore((s) => s.isTeachingLoading);
   const setCurrentSection = useStore((s) => s.setCurrentSection);
-  const saveTeaching = useStore((s) => s.saveTeaching);
   const setIsTeachingLoading = useStore((s) => s.setIsTeachingLoading);
   const clearTeaching = useStore((s) => s.clearTeaching);
   const initTeachingSections = useStore((s) => s.initTeachingSections);

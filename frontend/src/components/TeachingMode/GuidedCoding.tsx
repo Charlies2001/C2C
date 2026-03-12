@@ -81,7 +81,7 @@ function TaskCard({ task, index }: { task: TaskBlock; index: number }) {
     passed: { label: t('guided.passed'), color: 'bg-emerald-500', textColor: 'text-emerald-300' },
   };
 
-  const { label: statusLabel, color: statusColor, textColor: statusTextColor } = statusConfig[status];
+  const { label: statusLabel, color: statusColor } = statusConfig[status];
 
   return (
     <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">

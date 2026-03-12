@@ -14,7 +14,7 @@ type Stage = 'input' | 'preview';
 interface ProblemDraft {
   title: string;
   slug: string;
-  difficulty: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
   category: string;
   description: string;
   starter_code: string;

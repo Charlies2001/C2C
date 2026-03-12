@@ -7,14 +7,12 @@ declare global {
 }
 
 let pyodide: any = null;
-let loading = false;
 let loadPromise: Promise<any> | null = null;
 
 export async function initPyodide(): Promise<any> {
   if (pyodide) return pyodide;
   if (loadPromise) return loadPromise;
 
-  loading = true;
   loadPromise = (async () => {
     // Load the script if not already loaded
     if (!window.loadPyodide) {
@@ -29,7 +27,6 @@ export async function initPyodide(): Promise<any> {
     pyodide = await window.loadPyodide({
       indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/',
     });
-    loading = false;
     return pyodide;
   })();
 

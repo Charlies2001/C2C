@@ -65,7 +65,7 @@ export default function ProblemPage() {
   return (
     <div className={`flex flex-1 overflow-hidden ${mode === 'teaching' ? 'teaching-theme-bg' : ''}`}>
       <div className="flex-1 overflow-hidden">
-        <Group direction="horizontal">
+        <Group orientation="horizontal">
           <Panel defaultSize={40} minSize={20}>
             <div className={`h-full ${mode === 'teaching' ? 'border-r border-pink-200/10' : ''}`}>
               <ProblemDescription />
@@ -76,7 +76,7 @@ export default function ProblemPage() {
             {mode === 'teaching' ? (
               <Blackboard onGoToCoding={() => setMode('coding')} />
             ) : (
-              <Group direction="vertical">
+              <Group orientation="vertical">
                 <Panel defaultSize={60} minSize={30}>
                   <CodeEditor />
                 </Panel>
