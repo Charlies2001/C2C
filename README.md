@@ -212,7 +212,7 @@ cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-打开 http://localhost:3000。 无需安装 Node.js 或 Python。
+打开 http://localhost:3000  无需安装 Node.js 或 Python。
 
 ---
 
