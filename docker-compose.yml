@@ -2,7 +2,9 @@ services:
   backend:
     build: ./backend
     volumes:
-      - db-data:/app
+      - db-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/coding_bot.db
     env_file:
       - ./backend/.env
     ports:
