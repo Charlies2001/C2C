@@ -214,6 +214,11 @@ docker compose up --build
 
 打开 http://localhost:3000  无需安装 Node.js 或 Python。
 
+### 生产部署
+
+公网上线（HTTPS + 外部 PostgreSQL + 结构化日志）请参考 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
+生产使用独立的 `docker-compose.prod.yml`，并通过 Let's Encrypt 签发 TLS 证书。
+
 ---
 
 ## 配置
@@ -225,7 +230,7 @@ docker compose up --build
 | 设置项 | 说明 |
 |--------|------|
 | **LLM 供应商** | Anthropic、OpenAI、Gemini、通义千问、豆包、GLM |
-| **API Key** | 供应商的 API Key（存储在浏览器 localStorage） |
+| **API Key** | 供应商的 API Key（登录后保存到后端数据库，Fernet 对称加密） |
 | **模型** | 可选覆盖（留空使用供应商默认模型） |
 | **语言** | 界面语言：中文 / English / 日本語 / 한국어 |
 
@@ -235,9 +240,14 @@ docker compose up --build
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DATABASE_URL` | `sqlite:///./coding_bot.db` | 数据库连接字符串 |
+| `DATABASE_URL` | `sqlite:///./coding_bot.db` | 数据库连接串（生产用 `postgresql://...`） |
 | `SEED_LANGUAGE` | `zh-CN` | 首次启动时种子题目的语言（`zh-CN`、`en-US`、`ja-JP`、`ko-KR`） |
-| `ANTHROPIC_API_KEY` | — | 备用 API Key（界面配置优先） |
+| `ANTHROPIC_API_KEY` | — | 备用 API Key（用户配置优先） |
+| `JWT_SECRET_KEY` | 启动自动生成 | JWT 签名密钥（生产必须固定） |
+| `ENCRYPTION_KEY` | 复用 JWT_SECRET | API Key Fernet 加密密钥（生产建议独立） |
+| `CORS_ORIGINS` | `localhost:3000,3001,5173` | 允许的前端源（生产填实际域名） |
+| `LOG_FORMAT` | `json` | `json`（生产）或 `text`（开发可读） |
+| `LOG_DIR` | — | 设置后日志写到该目录（RotatingFileHandler 10MB × 5） |
 
 ---
 

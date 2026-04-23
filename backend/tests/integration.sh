@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+# End-to-end integration smoke test for CodingBot backend.
+# Starts a fresh backend against an isolated SQLite DB, runs auth + problems
+# + logging assertions, tears down. Exits non-zero on any failure.
+#
+# Run from repo root OR from backend/:
+#   bash backend/tests/integration.sh
+#
+# Requires: python3 (with project deps installed), sqlite3, curl, jq
+set -euo pipefail
+
+# ─── Setup ───
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+TMP=$(mktemp -d -t codingbot-int-XXXXXX)
+PORT=8789
+DB="$TMP/test.db"
+LOG_DIR="$TMP/logs"
+PIDFILE="$TMP/backend.pid"
+BASE="http://127.0.0.1:$PORT"
+PASS=0
+FAIL=0
+
+cleanup() {
+    if [[ -f "$PIDFILE" ]]; then
+        kill "$(cat "$PIDFILE")" 2>/dev/null || true
+        wait "$(cat "$PIDFILE")" 2>/dev/null || true
+    fi
+    rm -rf "$TMP"
+}
+trap cleanup EXIT
+
+check() {
+    local name="$1"; shift
+    if "$@"; then
+        echo "  ✓ $name"
+        PASS=$((PASS+1))
+    else
+        echo "  ✗ $name"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+http_status() {
+    local method="$1" url="$2"; shift 2
+    curl -sS -o /dev/null -w "%{http_code}" -X "$method" "$url" "$@"
+}
+
+# ─── Start backend ───
+echo "▶ Starting backend on :$PORT with SQLite at $DB"
+cd "$BACKEND_DIR"
+mkdir -p "$LOG_DIR"
+
+DATABASE_URL="sqlite:///$DB" \
+JWT_SECRET_KEY="int-test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+ENCRYPTION_KEY="int-test-enc-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" \
+ANTHROPIC_API_KEY="" \
+LOG_FORMAT="json" LOG_LEVEL="INFO" LOG_DIR="$LOG_DIR" \
+python3 -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" \
+    > "$TMP/backend.log" 2>&1 &
+echo $! > "$PIDFILE"
+
+# Wait for readiness (suppress connection-refused noise while booting)
+for i in {1..20}; do
+    if curl -sS -o /dev/null "$BASE/api/health" 2>/dev/null; then break; fi
+    sleep 0.3
+done
+
+# ─── 1. Health ───
+echo "▶ health"
+check "GET /api/health returns 200" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/health') == '200' ]]"
+
+# ─── 2. Schema + seed ───
+echo "▶ schema & seed"
+check "alembic_version row present" \
+    bash -c "sqlite3 '$DB' 'SELECT COUNT(*) FROM alembic_version' | grep -q '^1$'"
+check "10 seed problems loaded" \
+    bash -c "sqlite3 '$DB' 'SELECT COUNT(*) FROM problems' | grep -q '^10$'"
+
+# ─── 3. Auth ───
+echo "▶ auth"
+REG=$(curl -sS -X POST "$BASE/api/auth/register" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"int@test.com","password":"pass1234","nickname":"Int"}')
+check "register returns access_token" \
+    bash -c "echo '$REG' | jq -e '.access_token' > /dev/null"
+ACCESS=$(echo "$REG" | jq -r '.access_token')
+REFRESH=$(echo "$REG" | jq -r '.refresh_token')
+
+check "duplicate register returns 409" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/register' -H 'Content-Type: application/json' -d '{\"email\":\"int@test.com\",\"password\":\"pass1234\",\"nickname\":\"Dup\"}') == '409' ]]"
+check "wrong password returns 401" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/login' -H 'Content-Type: application/json' -d '{\"email\":\"int@test.com\",\"password\":\"wrong\"}') == '401' ]]"
+check "login returns access_token" \
+    bash -c "curl -sS -X POST '$BASE/api/auth/login' -H 'Content-Type: application/json' -d '{\"email\":\"int@test.com\",\"password\":\"pass1234\"}' | jq -e '.access_token' > /dev/null"
+check "/me with token returns user" \
+    bash -c "[[ \$(curl -sS '$BASE/api/auth/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.email') == 'int@test.com' ]]"
+check "/me without token returns 401" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/auth/me') == '401' ]]"
+check "refresh returns new access_token" \
+    bash -c "curl -sS -X POST '$BASE/api/auth/refresh' -H 'Content-Type: application/json' -d '{\"refresh_token\":\"$REFRESH\"}' | jq -e '.access_token' > /dev/null"
+check "access token used as refresh returns 401" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/refresh' -H 'Content-Type: application/json' -d '{\"refresh_token\":\"$ACCESS\"}') == '401' ]]"
+
+# ─── 4. API Key encryption ───
+echo "▶ api key (Fernet encryption)"
+curl -sS -X PUT "$BASE/api/auth/api-key" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" \
+    -d '{"provider":"anthropic","api_key":"sk-test-secret-12345","model":"claude"}' > /dev/null
+check "API key saved (has_api_key=true)" \
+    bash -c "[[ \$(curl -sS '$BASE/api/auth/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.has_api_key') == 'true' ]]"
+check "DB stores ciphertext (Fernet prefix gAAAAA...)" \
+    bash -c "sqlite3 '$DB' \"SELECT substr(ai_api_key_encrypted,1,7) FROM users\" | grep -q '^gAAAAA'"
+check "DB does NOT contain plaintext key" \
+    bash -c "! sqlite3 '$DB' 'SELECT ai_api_key_encrypted FROM users' | grep -q 'sk-test-secret'"
+curl -sS -X DELETE "$BASE/api/auth/api-key" -H "Authorization: Bearer $ACCESS" > /dev/null
+check "API key deleted (has_api_key=false)" \
+    bash -c "[[ \$(curl -sS '$BASE/api/auth/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.has_api_key') == 'false' ]]"
+
+# ─── 5. Problems CRUD ───
+echo "▶ problems CRUD"
+check "GET /api/problems/ returns 10 seed items" \
+    bash -c "[[ \$(curl -sS '$BASE/api/problems/' | jq 'length') == '10' ]]"
+check "GET /api/problems/1 returns title" \
+    bash -c "curl -sS '$BASE/api/problems/1' | jq -e '.title' > /dev/null"
+check "GET /api/problems/9999 returns 404" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/9999') == '404' ]]"
+check "POST /api/problems/ without auth returns 401" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/problems/' -H 'Content-Type: application/json' -d '{\"title\":\"x\",\"slug\":\"x\",\"difficulty\":\"Easy\",\"category\":\"array\",\"description\":\"d\",\"starter_code\":\"c\",\"test_cases\":[]}') == '401' ]]"
+CREATED=$(curl -sS -X POST "$BASE/api/problems/" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" \
+    -d '{"title":"Int Test","slug":"int-test","difficulty":"Easy","category":"array","description":"d","starter_code":"c","test_cases":[{"input":"[1]","expected":"1"}]}')
+NEW_ID=$(echo "$CREATED" | jq -r '.id')
+check "POST /api/problems/ with auth returns id" \
+    bash -c "[[ '$NEW_ID' =~ ^[0-9]+$ ]]"
+check "POST duplicate slug returns 409" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/problems/' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"title\":\"D\",\"slug\":\"int-test\",\"difficulty\":\"Easy\",\"category\":\"array\",\"description\":\"d\",\"starter_code\":\"c\",\"test_cases\":[]}') == '409' ]]"
+check "PUT rename persists" \
+    bash -c "[[ \$(curl -sS -X PUT '$BASE/api/problems/$NEW_ID' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"title\":\"Int Renamed\"}' | jq -r '.title') == 'Int Renamed' ]]"
+check "DELETE returns 204" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE '$BASE/api/problems/$NEW_ID' -H 'Authorization: Bearer $ACCESS') == '204' ]]"
+check "GET deleted id returns 404" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/$NEW_ID') == '404' ]]"
+
+# ─── 6. Structured logging ───
+echo "▶ logging"
+# let in-flight writes flush
+sleep 0.5
+LOG_FILE="$LOG_DIR/codingbot.log"
+check "log file exists" \
+    bash -c "[[ -f '$LOG_FILE' ]]"
+check "log file contains JSON lines" \
+    bash -c "head -1 '$LOG_FILE' | jq -e . > /dev/null"
+check "request log has method/path/status/duration_ms" \
+    bash -c "grep '\"msg\": \"request\"' '$LOG_FILE' | head -1 | jq -e '.method and .path and .status and .duration_ms' > /dev/null"
+check "/api/health not logged as request (reduces noise)" \
+    bash -c "! grep -q '\"path\": \"/api/health\"' '$LOG_FILE'"
+check "authenticated request has user_id" \
+    bash -c "grep '\"path\": \"/api/auth/me\"' '$LOG_FILE' | head -1 | jq -e '.user_id == 1' > /dev/null"
+check "x-request-id header in response" \
+    bash -c "curl -sS -D- '$BASE/api/problems/' -o /dev/null | grep -qi '^x-request-id:'"
+
+# ─── Summary ───
+echo
+echo "────────────────────────────────────────"
+echo "  PASS: $PASS    FAIL: $FAIL"
+echo "────────────────────────────────────────"
+if [[ $FAIL -gt 0 ]]; then
+    echo "Integration tests failed. Backend log tail:"
+    tail -40 "$TMP/backend.log"
+    exit 1
+fi
+exit 0

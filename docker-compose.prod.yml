@@ -1,0 +1,83 @@
+# Production compose — standalone (not an override).
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites (see docs/DEPLOYMENT.md):
+#   - backend/.env.production with DATABASE_URL (external PG), JWT_SECRET_KEY,
+#     ENCRYPTION_KEY, CORS_ORIGINS set
+#   - Let's Encrypt cert already issued at /etc/letsencrypt/live/<domain>/
+#   - frontend/nginx-ssl.conf with domain substituted in
+#   - Host directories created: /etc/letsencrypt, /var/www/certbot, /var/log/codingbot
+#
+# Differences from docker-compose.yml (dev):
+#   - backend port NOT exposed to host (only reachable via nginx)
+#   - frontend exposes 80 + 443 with TLS
+#   - nginx-ssl.conf replaces dev nginx.conf
+#   - Letsencrypt + ACME webroot volumes mounted into nginx
+#   - Backend logs written to /var/log/codingbot (LOG_DIR)
+#
+# Certificate renewal: run `certbot renew` on host via cron, then
+#   `docker compose -f docker-compose.prod.yml exec frontend nginx -s reload`.
+
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env.production
+    # No `ports:` — backend is only reachable via the `codingbot` network
+    restart: unless-stopped
+    volumes:
+      - /var/log/codingbot:/var/log/codingbot
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - codingbot
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Mount SSL conf over the default one baked into the image
+      - ./frontend/nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      # Let's Encrypt certificates (issued on host with certbot)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Webroot for ACME HTTP-01 challenges
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - codingbot
+
+networks:
+  codingbot:
+    driver: bridge
