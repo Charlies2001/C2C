@@ -27,7 +27,7 @@ export default function HintPanel() {
   const {
     hints, showHintNudge, isHintLoading,
     dismissHintNudge, addHint, updateLastHint, setLastHintLevel, setIsHintLoading,
-    currentProblem, code, output, hasAllLevels, clearHints,
+    currentProblem, code, output, hasAllLevels, clearHints, saveHints,
   } = useStore();
 
   const allLevelsCovered = hasAllLevels();
@@ -64,6 +64,7 @@ export default function HintPanel() {
       },
       () => {
         setIsHintLoading(false);
+        saveHints();
       },
       (error) => {
         updateLastHint(`${t('hint.error')}: ${error}`);
@@ -71,7 +72,7 @@ export default function HintPanel() {
       }
     );
   }, [currentProblem, isHintLoading, allLevelsCovered, hints, code, output,
-      dismissHintNudge, setIsHintLoading, addHint, updateLastHint, setLastHintLevel, t]);
+      dismissHintNudge, setIsHintLoading, addHint, updateLastHint, setLastHintLevel, saveHints, t]);
 
   return (
     <>

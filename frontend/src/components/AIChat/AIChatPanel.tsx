@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { streamAIChat } from '../../api/ai';
+
+// AbortController ref for cancelling in-flight chat requests
+let chatAbortController: AbortController | null = null;
 
 const chatMarkdownComponents: Record<string, React.ComponentType<any>> = {
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
@@ -34,6 +37,14 @@ export default function AIChatPanel() {
     if (isChatOpen) inputRef.current?.focus();
   }, [isChatOpen]);
 
+  // Abort in-flight request when component unmounts
+  useEffect(() => {
+    return () => {
+      chatAbortController?.abort();
+      chatAbortController = null;
+    };
+  }, []);
+
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || isAILoading) return;
@@ -49,6 +60,10 @@ export default function AIChatPanel() {
     const testResultStr = testResults.length > 0
       ? testResults.map((r) => `测试${r.index + 1}: ${r.passed ? '通过' : '失败'} (期望: ${r.expected}, 实际: ${r.actual})`).join('\n')
       : t('chat.noTest');
+
+    // Cancel any previous in-flight request
+    chatAbortController?.abort();
+    chatAbortController = new AbortController();
 
     await streamAIChat(
       [...chatMessages, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -67,7 +82,8 @@ export default function AIChatPanel() {
       (error) => {
         updateLastAssistantMessage(error);
         setIsAILoading(false);
-      }
+      },
+      chatAbortController.signal,
     );
   };
 

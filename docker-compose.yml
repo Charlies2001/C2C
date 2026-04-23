@@ -1,21 +1,45 @@
 services:
   backend:
     build: ./backend
-    volumes:
-      - db-data:/app/data
-    environment:
-      - DATABASE_URL=sqlite:////app/data/coding_bot.db
     env_file:
       - ./backend/.env
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "3001:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
-volumes:
-  db-data:

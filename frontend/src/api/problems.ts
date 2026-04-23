@@ -1,5 +1,6 @@
 import i18n from '../i18n';
 import type { Problem, ProblemListItem } from '../types/problem';
+import { authFetch } from './auth';
 
 const BASE_URL = '/api';
 
@@ -27,24 +28,22 @@ export async function generateProblem(description: string): Promise<{
   problem?: Omit<Problem, 'id'>;
   error?: string;
 }> {
-  // Import inline to avoid circular deps
-  const { getProviderConfig } = await import('./ai');
-  const res = await fetch(`${BASE_URL}/ai/generate-problem`, {
+  const res = await authFetch(`${BASE_URL}/ai/generate-problem`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, provider_config: getProviderConfig(), language: i18n.language }),
+    body: JSON.stringify({ description, language: i18n.language }),
   });
   if (!res.ok) throw new Error('Failed to generate problem');
   return res.json();
 }
 
 export async function deleteProblem(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/problems/${id}`, { method: 'DELETE' });
+  const res = await authFetch(`${BASE_URL}/problems/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete problem');
 }
 
 export async function createProblem(problem: Omit<Problem, 'id'>): Promise<Problem> {
-  const res = await fetch(`${BASE_URL}/problems/`, {
+  const res = await authFetch(`${BASE_URL}/problems/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(problem),

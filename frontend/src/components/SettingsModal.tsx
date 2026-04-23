@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, changeLanguage } from '../i18n';
+import { useAuthStore } from '../store/useAuthStore';
+import { saveApiKey, deleteApiKey } from '../api/auth';
 
 const PROVIDERS = [
   { id: 'anthropic', label: 'Anthropic', defaultModel: 'claude-sonnet-4-6' },
@@ -16,66 +18,64 @@ interface Props {
   onClose: () => void;
 }
 
-interface StoredSettings {
-  provider: string;
-  apiKey: string;
-  model: string;
-}
-
-function loadSettings(): StoredSettings {
-  try {
-    const raw = localStorage.getItem('ai_provider_settings');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.provider) return parsed;
-    }
-  } catch {}
-  return { provider: 'anthropic', apiKey: '', model: '' };
-}
-
-function maskKey(key: string): string {
-  if (!key) return '';
-  return key.length > 8 ? key.slice(0, 3) + '...' + key.slice(-4) : '***';
-}
-
 export default function SettingsModal({ open, onClose }: Props) {
   const { t, i18n } = useTranslation();
+  const { user, refreshUser } = useAuthStore();
   const [provider, setProvider] = useState('anthropic');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
-  const [savedKey, setSavedKey] = useState('');
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      const settings = loadSettings();
-      setProvider(settings.provider);
+    if (open && user) {
+      setProvider(user.ai_provider || 'anthropic');
       setApiKey('');
-      setModel(settings.model);
-      setSavedKey(settings.apiKey);
+      setModel(user.ai_model || '');
       setMessage('');
     }
-  }, [open]);
+  }, [open, user]);
 
   if (!open) return null;
 
   const currentDefault = PROVIDERS.find(p => p.id === provider)?.defaultModel || '';
 
-  const handleSave = () => {
-    const keyToSave = apiKey.trim() || savedKey;
-    if (!keyToSave) {
+  const handleSave = async () => {
+    const keyToSave = apiKey.trim();
+    if (!keyToSave && !user?.has_api_key) {
       setMessage(t('settings.enterApiKey'));
       return;
     }
-    const settings: StoredSettings = {
-      provider,
-      apiKey: keyToSave,
-      model: model.trim(),
-    };
-    localStorage.setItem('ai_provider_settings', JSON.stringify(settings));
-    setSavedKey(keyToSave);
-    setApiKey('');
-    setMessage(t('settings.saved'));
+    setSaving(true);
+    try {
+      if (keyToSave) {
+        await saveApiKey(provider, keyToSave, model.trim());
+      } else {
+        // Only updating provider/model — re-save with a placeholder flow
+        // User must enter a new key or keep existing
+        await saveApiKey(provider, '', model.trim());
+      }
+      await refreshUser();
+      setApiKey('');
+      setMessage(t('settings.saved'));
+    } catch (err: any) {
+      setMessage(err.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteKey = async () => {
+    setSaving(true);
+    try {
+      await deleteApiKey();
+      await refreshUser();
+      setMessage('API Key 已删除');
+    } catch (err: any) {
+      setMessage(err.message || '删除失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -117,13 +117,6 @@ export default function SettingsModal({ open, onClose }: Props) {
                   setProvider(p.id);
                   setModel('');
                   setMessage('');
-                  const settings = loadSettings();
-                  if (settings.provider === p.id) {
-                    setSavedKey(settings.apiKey);
-                    setModel(settings.model);
-                  } else {
-                    setSavedKey('');
-                  }
                 }}
                 className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                   provider === p.id
@@ -140,16 +133,23 @@ export default function SettingsModal({ open, onClose }: Props) {
         {/* API Key input */}
         <div className="space-y-2 mb-4">
           <label className="block text-sm text-gray-400">{t('settings.apiKey')}</label>
-          {savedKey && (
-            <div className="text-xs text-violet-400">
-              {t('settings.configured')}: <span className="font-mono">{maskKey(savedKey)}</span>
+          {user?.has_api_key && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-emerald-400">{t('settings.configured')}: ****</span>
+              <button
+                onClick={handleDeleteKey}
+                disabled={saving}
+                className="text-xs text-rose-400 hover:text-rose-300 transition-colors disabled:opacity-50"
+              >
+                删除 Key
+              </button>
             </div>
           )}
           <input
             type="password"
             value={apiKey}
             onChange={(e) => { setApiKey(e.target.value); setMessage(''); }}
-            placeholder={savedKey ? t('settings.newKeyPlaceholder') : t('settings.enterKey')}
+            placeholder={user?.has_api_key ? t('settings.newKeyPlaceholder') : t('settings.enterKey')}
             className="w-full px-3 py-2 bg-gray-950/60 border border-white/[0.06] rounded-xl text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-colors"
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
           />
@@ -184,9 +184,10 @@ export default function SettingsModal({ open, onClose }: Props) {
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-1.5 text-sm bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white rounded-xl transition-all"
+            disabled={saving}
+            className="px-4 py-1.5 text-sm bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white rounded-xl transition-all disabled:opacity-50"
           >
-            {t('settings.save')}
+            {saving ? '保存中...' : t('settings.save')}
           </button>
         </div>
       </div>

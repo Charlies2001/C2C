@@ -1,10 +1,14 @@
 import json
+import logging
 import re
+import time
 import asyncio
 import anthropic
 import openai
 from typing import AsyncGenerator
 from ..config import settings
+
+logger = logging.getLogger("codingbot.ai")
 
 # ─── Provider registry ───
 
@@ -15,6 +19,37 @@ PROVIDER_REGISTRY = {
     "glm":       {"base_url": "https://open.bigmodel.cn/api/paas/v4",                   "default_model": "glm-4-flash"},
     "gemini":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "default_model": "gemini-2.0-flash"},
 }
+
+# ─── LLM client pool (reuse clients to avoid TCP connection accumulation) ───
+
+_anthropic_clients: dict[str, anthropic.AsyncAnthropic] = {}
+_openai_clients: dict[str, openai.AsyncOpenAI] = {}
+
+# Default timeout for LLM requests (seconds)
+LLM_STREAM_TIMEOUT = 120
+LLM_CALL_TIMEOUT = 60
+
+
+def _get_anthropic_client(api_key: str) -> anthropic.AsyncAnthropic:
+    """Get or create a cached Anthropic client for the given API key."""
+    if api_key not in _anthropic_clients:
+        _anthropic_clients[api_key] = anthropic.AsyncAnthropic(
+            api_key=api_key,
+            timeout=LLM_STREAM_TIMEOUT,
+        )
+    return _anthropic_clients[api_key]
+
+
+def _get_openai_client(api_key: str, base_url: str) -> openai.AsyncOpenAI:
+    """Get or create a cached OpenAI-compatible client."""
+    cache_key = f"{api_key}:{base_url}"
+    if cache_key not in _openai_clients:
+        _openai_clients[cache_key] = openai.AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=LLM_STREAM_TIMEOUT,
+        )
+    return _openai_clients[cache_key]
 
 
 def _resolve_provider_config(provider_config: dict | None) -> dict:
@@ -50,31 +85,53 @@ async def _stream_llm_response(
     provider = cfg["provider"]
     api_key = cfg["api_key"]
     model = cfg["model"]
-
-    if provider == "anthropic":
-        client = anthropic.AsyncAnthropic(api_key=api_key)
-        async with client.messages.stream(
-            model=model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=messages,
-        ) as stream:
-            async for text in stream.text_stream:
-                yield text
-    else:
-        base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
-        client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
-        oai_messages = [{"role": "system", "content": system_prompt}] + messages
-        stream = await client.chat.completions.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=oai_messages,
-            stream=True,
+    start = time.perf_counter()
+    chars = 0
+    error: str | None = None
+    try:
+        if provider == "anthropic":
+            client = _get_anthropic_client(api_key)
+            async with asyncio.timeout(LLM_STREAM_TIMEOUT):
+                async with client.messages.stream(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system_prompt,
+                    messages=messages,
+                ) as stream:
+                    async for text in stream.text_stream:
+                        chars += len(text)
+                        yield text
+        else:
+            base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
+            client = _get_openai_client(api_key, base_url)
+            oai_messages = [{"role": "system", "content": system_prompt}] + messages
+            async with asyncio.timeout(LLM_STREAM_TIMEOUT):
+                stream = await client.chat.completions.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=oai_messages,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta and delta.content:
+                        chars += len(delta.content)
+                        yield delta.content
+    except Exception as e:
+        error = type(e).__name__
+        raise
+    finally:
+        logger.info(
+            "llm_stream",
+            extra={
+                "provider": provider,
+                "model": model,
+                "max_tokens": max_tokens,
+                "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                "output_chars": chars,
+                "error": error,
+            },
         )
-        async for chunk in stream:
-            delta = chunk.choices[0].delta if chunk.choices else None
-            if delta and delta.content:
-                yield delta.content
 
 
 async def _call_llm(
@@ -91,26 +148,47 @@ async def _call_llm(
     provider = cfg["provider"]
     api_key = cfg["api_key"]
     model = cfg["model"]
-
-    if provider == "anthropic":
-        client = anthropic.AsyncAnthropic(api_key=api_key)
-        response = await client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=messages,
+    start = time.perf_counter()
+    result = ""
+    error: str | None = None
+    try:
+        if provider == "anthropic":
+            client = _get_anthropic_client(api_key)
+            async with asyncio.timeout(LLM_CALL_TIMEOUT):
+                response = await client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system_prompt,
+                    messages=messages,
+                )
+            result = response.content[0].text.strip()
+        else:
+            base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
+            client = _get_openai_client(api_key, base_url)
+            oai_messages = [{"role": "system", "content": system_prompt}] + messages
+            async with asyncio.timeout(LLM_CALL_TIMEOUT):
+                response = await client.chat.completions.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=oai_messages,
+                )
+            result = response.choices[0].message.content.strip()
+        return result
+    except Exception as e:
+        error = type(e).__name__
+        raise
+    finally:
+        logger.info(
+            "llm_call",
+            extra={
+                "provider": provider,
+                "model": model,
+                "max_tokens": max_tokens,
+                "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                "output_chars": len(result),
+                "error": error,
+            },
         )
-        return response.content[0].text.strip()
-    else:
-        base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
-        client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
-        oai_messages = [{"role": "system", "content": system_prompt}] + messages
-        response = await client.chat.completions.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=oai_messages,
-        )
-        return response.choices[0].message.content.strip()
 
 HINT_LEVEL_NAMES = {
     1: "思路方向",
@@ -591,6 +669,9 @@ async def stream_teaching_section(
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
+    except TimeoutError:
+        yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
+        yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
         yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
@@ -833,6 +914,9 @@ async def stream_ai_response(
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
+    except TimeoutError:
+        yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
+        yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
         yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
@@ -932,6 +1016,9 @@ async def stream_hint_response(
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
+    except TimeoutError:
+        yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
+        yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
         yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
@@ -959,6 +1046,7 @@ async def stream_teaching_content(
         current_section = 0
         buffer = ""
         section_started = False
+        MAX_BUFFER_SIZE = 32000  # Safety limit to prevent unbounded buffer growth
 
         async for text in _stream_llm_response(
             TEACHING_SYSTEM_PROMPT,
@@ -984,10 +1072,17 @@ async def stream_teaching_content(
             if section_started and buffer and "---SECTION:" not in buffer:
                 yield f"data: {json.dumps({'content': buffer}, ensure_ascii=False)}\n\n"
                 buffer = ""
+            # Safety: flush oversized buffer to prevent memory exhaustion
+            if len(buffer) > MAX_BUFFER_SIZE:
+                yield f"data: {json.dumps({'content': buffer}, ensure_ascii=False)}\n\n"
+                buffer = ""
 
         if buffer.strip() and section_started:
             yield f"data: {json.dumps({'content': buffer}, ensure_ascii=False)}\n\n"
 
+        yield "data: [DONE]\n\n"
+    except TimeoutError:
+        yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
         yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'

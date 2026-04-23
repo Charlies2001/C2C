@@ -125,14 +125,47 @@ interface AppState {
   dismissTreeGrowth: () => void;
 }
 
+// Limit chat history to prevent unbounded memory/localStorage growth
+const MAX_CHAT_MESSAGES = 100;
+// Limit solved records to keep only essential data
+const MAX_SOLVED_RECORDS = 500;
+
 function saveChatToStorage(problemId: number, messages: ChatMessage[]) {
-  localStorage.setItem(`chat_${problemId}`, JSON.stringify(messages));
+  // Only persist the most recent messages
+  const toSave = messages.length > MAX_CHAT_MESSAGES
+    ? messages.slice(-MAX_CHAT_MESSAGES)
+    : messages;
+  try {
+    localStorage.setItem(`chat_${problemId}`, JSON.stringify(toSave));
+  } catch (e) {
+    // localStorage full — clear old chat data and retry
+    _cleanupOldChatStorage();
+    try {
+      localStorage.setItem(`chat_${problemId}`, JSON.stringify(toSave));
+    } catch {}
+  }
+}
+
+function _cleanupOldChatStorage() {
+  const chatKeys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('chat_')) chatKeys.push(key);
+  }
+  // Remove oldest half of chat storage entries
+  const toRemove = chatKeys.slice(0, Math.ceil(chatKeys.length / 2));
+  toRemove.forEach((key) => localStorage.removeItem(key));
 }
 
 function loadChatFromStorage(problemId: number): ChatMessage[] {
   try {
     const stored = localStorage.getItem(`chat_${problemId}`);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    // Apply limit on load as well
+    return Array.isArray(parsed) && parsed.length > MAX_CHAT_MESSAGES
+      ? parsed.slice(-MAX_CHAT_MESSAGES)
+      : parsed || [];
   } catch {
     return [];
   }
@@ -249,7 +282,11 @@ export const useStore = create<AppState>((set, get) => ({
   chatProblemId: null,
   addChatMessage: (msg) =>
     set((state) => {
-      const newMessages = [...state.chatMessages, msg];
+      let newMessages = [...state.chatMessages, msg];
+      // Trim to limit if over threshold
+      if (newMessages.length > MAX_CHAT_MESSAGES) {
+        newMessages = newMessages.slice(-MAX_CHAT_MESSAGES);
+      }
       if (state.chatProblemId !== null) {
         saveChatToStorage(state.chatProblemId, newMessages);
       }
@@ -262,6 +299,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (lastIdx >= 0 && msgs[lastIdx].role === 'assistant') {
         msgs[lastIdx] = { ...msgs[lastIdx], content };
       }
+      // Don't save to localStorage on every streaming token — only on completion (saveChatMessages)
       return { chatMessages: msgs };
     }),
   clearChat: () => set({ chatMessages: [] }),
@@ -315,9 +353,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (newHints.length > 0) {
         newHints[newHints.length - 1] = { ...newHints[newHints.length - 1], content };
       }
-      if (state.hintProblemId !== null) {
-        saveHintsToStorage(state.hintProblemId, newHints);
-      }
+      // Don't save to localStorage on every streaming token — only on completion (saveHints)
       return { hints: newHints };
     }),
   setLastHintLevel: (level) =>
@@ -498,7 +534,11 @@ export const useStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.solvedRecords.some((r) => r.problemId === problemId)) return;
     const oldStage = getTreeStageInfo(state.solvedRecords.length).stage;
-    const newRecords = [...state.solvedRecords, { problemId, title, difficulty, solvedAt: Date.now() }];
+    let newRecords = [...state.solvedRecords, { problemId, title, difficulty, solvedAt: Date.now() }];
+    // Trim oldest records if over limit (keep count accurate via length)
+    if (newRecords.length > MAX_SOLVED_RECORDS) {
+      newRecords = newRecords.slice(-MAX_SOLVED_RECORDS);
+    }
     const newStage = getTreeStageInfo(newRecords.length).stage;
     saveTreeProgressToStorage(newRecords);
     set({

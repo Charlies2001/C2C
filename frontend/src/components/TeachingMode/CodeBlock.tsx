@@ -18,7 +18,12 @@ mermaid.initialize({
   },
 });
 
+// Use modular counter to prevent unbounded growth over long sessions
 let mermaidIdCounter = 0;
+function nextMermaidId() {
+  mermaidIdCounter = (mermaidIdCounter + 1) % 1000000;
+  return `mermaid-${mermaidIdCounter}-${Date.now()}`;
+}
 
 interface CodeBlockProps {
   className?: string;
@@ -29,7 +34,7 @@ function MermaidBlock({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState(false);
-  const idRef = useRef(`mermaid-${++mermaidIdCounter}`);
+  const idRef = useRef(nextMermaidId());
 
   useEffect(() => {
     let cancelled = false;
@@ -85,11 +90,21 @@ export default function CodeBlock({ className, children, ...rest }: CodeBlockPro
 
   const isInline = !className && !String(children).includes('\n');
 
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Cleanup copy timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(codeString);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback
     }

@@ -5,7 +5,9 @@ from typing import Optional
 
 from ..database import get_db
 from ..models.problem import Problem
+from ..models.user import User
 from ..schemas.problem import ProblemCreate, ProblemUpdate, ProblemResponse, ProblemListItem
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/api/problems", tags=["problems"])
 
@@ -30,7 +32,7 @@ def get_problem(problem_id: int, db: Session = Depends(get_db)):
     return problem
 
 @router.post("/", response_model=ProblemResponse, status_code=201)
-def create_problem(problem: ProblemCreate, db: Session = Depends(get_db)):
+def create_problem(problem: ProblemCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_problem = Problem(**problem.model_dump())
     db.add(db_problem)
     try:
@@ -42,7 +44,7 @@ def create_problem(problem: ProblemCreate, db: Session = Depends(get_db)):
     return db_problem
 
 @router.put("/{problem_id}", response_model=ProblemResponse)
-def update_problem(problem_id: int, problem: ProblemUpdate, db: Session = Depends(get_db)):
+def update_problem(problem_id: int, problem: ProblemUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_problem = db.query(Problem).filter(Problem.id == problem_id).first()
     if not db_problem:
         raise HTTPException(status_code=404, detail="Problem not found")
@@ -54,7 +56,7 @@ def update_problem(problem_id: int, problem: ProblemUpdate, db: Session = Depend
     return db_problem
 
 @router.delete("/{problem_id}", status_code=204)
-def delete_problem(problem_id: int, db: Session = Depends(get_db)):
+def delete_problem(problem_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_problem = db.query(Problem).filter(Problem.id == problem_id).first()
     if not db_problem:
         raise HTTPException(status_code=404, detail="Problem not found")
