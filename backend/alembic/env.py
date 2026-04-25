@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.config import settings  # noqa: E402
 from app.database import Base  # noqa: E402
 from app.models.api_key import UserAPIKey  # noqa: F401, E402
+from app.models.payment import PaymentOrder  # noqa: F401, E402
 from app.models.problem import Problem  # noqa: F401, E402
 from app.models.user import User  # noqa: F401, E402
 

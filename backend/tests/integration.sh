@@ -239,6 +239,19 @@ RE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
 # After re-upgrade, request will hit rate limiter (we exhausted earlier). Expect 400 (no key) OR 429.
 check "re-upgrade restores AI access (no longer 402)" bash -c "[[ '$RE_CODE' != '402' ]]"
 
+# ─── 9. Payment providers (Day 5 — #5b) ───
+echo "▶ payment providers"
+check "providers list returns alipay + wechat" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/providers' | jq 'length') == '2' ]]"
+check "providers report unavailable when creds missing" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/providers' | jq '[.[] | select(.available==false)] | length') == '2' ]]"
+check "checkout for alipay (unconfigured) returns 503" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/checkout' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"provider\":\"alipay\",\"plan\":\"monthly\"}') == '503' ]]"
+check "checkout for unknown provider returns 400" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/checkout' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"provider\":\"stripe\",\"plan\":\"monthly\"}') == '400' ]]"
+check "alipay webhook returns 503 when unconfigured" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/alipay/notify') == '503' ]]"
+
 # ─── Summary ───
 echo
 echo "────────────────────────────────────────"

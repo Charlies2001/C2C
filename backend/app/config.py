@@ -42,6 +42,27 @@ class Settings:
     # real payment provider (Stripe / WeChat / Alipay) is wired up.
     ENABLE_MOCK_BILLING: bool = os.getenv("ENABLE_MOCK_BILLING", "false").lower() == "true"
 
+    # Pricing — keep canonical price in cents to avoid float drift
+    PLAN_MONTHLY_PRICE_CENTS: int = int(os.getenv("PLAN_MONTHLY_PRICE_CENTS", "2900"))  # ¥29.00
+
+    # ─── Alipay ───
+    # Empty values = provider disabled. /checkout returns 503 when called for it.
+    ALIPAY_APP_ID: str = os.getenv("ALIPAY_APP_ID", "")
+    ALIPAY_APP_PRIVATE_KEY: str = os.getenv("ALIPAY_APP_PRIVATE_KEY", "")  # PEM contents
+    ALIPAY_PUBLIC_KEY: str = os.getenv("ALIPAY_PUBLIC_KEY", "")            # Alipay's pubkey for webhook verify
+    ALIPAY_NOTIFY_URL: str = os.getenv("ALIPAY_NOTIFY_URL", "")             # https://your-domain/api/billing/alipay/notify
+    ALIPAY_RETURN_URL: str = os.getenv("ALIPAY_RETURN_URL", "")             # browser redirect after pay (optional)
+    ALIPAY_SANDBOX: bool = os.getenv("ALIPAY_SANDBOX", "false").lower() == "true"
+
+    # ─── WeChat Pay v3 ───
+    WECHAT_APP_ID: str = os.getenv("WECHAT_APP_ID", "")
+    WECHAT_MCH_ID: str = os.getenv("WECHAT_MCH_ID", "")
+    WECHAT_API_V3_KEY: str = os.getenv("WECHAT_API_V3_KEY", "")
+    WECHAT_PRIVATE_KEY: str = os.getenv("WECHAT_PRIVATE_KEY", "")           # merchant PEM
+    WECHAT_CERT_SERIAL_NO: str = os.getenv("WECHAT_CERT_SERIAL_NO", "")
+    WECHAT_NOTIFY_URL: str = os.getenv("WECHAT_NOTIFY_URL", "")             # https://your-domain/api/billing/wechat/notify
+    WECHAT_CERT_DIR: str = os.getenv("WECHAT_CERT_DIR", "")                 # cache dir for downloaded platform certs
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json | text
