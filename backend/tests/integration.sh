@@ -58,6 +58,7 @@ ANTHROPIC_API_KEY="" \
 ALLOW_ENV_KEY_FALLBACK="false" \
 RATE_LIMIT_AI_PER_USER="3" \
 RATE_LIMIT_AI_GLOBAL="100" \
+ENABLE_MOCK_BILLING="true" \
 LOG_FORMAT="json" LOG_LEVEL="INFO" LOG_DIR="$LOG_DIR" \
 python3 -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" \
     > "$TMP/backend.log" 2>&1 &
@@ -114,12 +115,34 @@ curl -sS -X PUT "$BASE/api/auth/api-key" \
 check "API key saved (has_api_key=true)" \
     bash -c "[[ \$(curl -sS '$BASE/api/auth/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.has_api_key') == 'true' ]]"
 check "DB stores ciphertext (Fernet prefix gAAAAA...)" \
-    bash -c "sqlite3 '$DB' \"SELECT substr(ai_api_key_encrypted,1,7) FROM users\" | grep -q '^gAAAAA'"
+    bash -c "sqlite3 '$DB' \"SELECT substr(api_key_encrypted,1,7) FROM user_api_keys\" | grep -q '^gAAAAA'"
 check "DB does NOT contain plaintext key" \
-    bash -c "! sqlite3 '$DB' 'SELECT ai_api_key_encrypted FROM users' | grep -q 'sk-test-secret'"
+    bash -c "! sqlite3 '$DB' 'SELECT api_key_encrypted FROM user_api_keys' | grep -q 'sk-test-secret'"
 curl -sS -X DELETE "$BASE/api/auth/api-key" -H "Authorization: Bearer $ACCESS" > /dev/null
 check "API key deleted (has_api_key=false)" \
     bash -c "[[ \$(curl -sS '$BASE/api/auth/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.has_api_key') == 'false' ]]"
+
+# ─── 4b. Multi-provider keys (Day 5 — #7) ───
+echo "▶ multi-provider keys"
+# Create key for anthropic via new endpoint
+KID1=$(curl -sS -X POST "$BASE/api/auth/api-keys" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" \
+    -d '{"provider":"anthropic","api_key":"sk-ant-key1","model":"claude-sonnet-4-6","set_default":true}' | jq -r '.id')
+check "POST /api/auth/api-keys creates key (returns id)" bash -c "[[ '$KID1' =~ ^[0-9]+$ ]]"
+KID2=$(curl -sS -X POST "$BASE/api/auth/api-keys" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" \
+    -d '{"provider":"openai","api_key":"sk-oai-key2","model":"gpt-4o","set_default":false}' | jq -r '.id')
+check "second POST for different provider creates separate key" bash -c "[[ '$KID2' =~ ^[0-9]+$ ]] && [[ '$KID1' != '$KID2' ]]"
+check "GET /api/auth/api-keys returns both" \
+    bash -c "[[ \$(curl -sS '$BASE/api/auth/api-keys' -H 'Authorization: Bearer $ACCESS' | jq 'length') == '2' ]]"
+check "default flag survives round-trip" \
+    bash -c "[[ \$(curl -sS '$BASE/api/auth/api-keys' -H 'Authorization: Bearer $ACCESS' | jq \".[] | select(.provider==\\\"anthropic\\\") | .is_default\") == 'true' ]]"
+check "PUT default switches default to other key" \
+    bash -c "curl -sS -o /dev/null -X PUT '$BASE/api/auth/api-keys/$KID2/default' -H 'Authorization: Bearer $ACCESS' && [[ \$(curl -sS '$BASE/api/auth/api-keys' -H 'Authorization: Bearer $ACCESS' | jq \".[] | select(.id==$KID2) | .is_default\") == 'true' ]] && [[ \$(curl -sS '$BASE/api/auth/api-keys' -H 'Authorization: Bearer $ACCESS' | jq \".[] | select(.id==$KID1) | .is_default\") == 'false' ]]"
+check "DELETE removes one key" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE '$BASE/api/auth/api-keys/$KID1' -H 'Authorization: Bearer $ACCESS') == '204' ]] && [[ \$(curl -sS '$BASE/api/auth/api-keys' -H 'Authorization: Bearer $ACCESS' | jq 'length') == '1' ]]"
+# Cleanup remaining key
+curl -sS -X DELETE "$BASE/api/auth/api-keys/$KID2" -H "Authorization: Bearer $ACCESS" > /dev/null
 
 # ─── 5. Problems CRUD ───
 echo "▶ problems CRUD"
@@ -190,6 +213,31 @@ check "429 response includes Retry-After header" bash -c "[[ '$RA' == '60' ]]"
 # Sanity: non-AI endpoint not rate-limited
 NON_AI=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/api/auth/me" -H "Authorization: Bearer $ACCESS")
 check "non-AI endpoint not affected by AI rate limit" bash -c "[[ '$NON_AI' == '200' ]]"
+
+# ─── 8. Subscription state (Day 5 — #5a) ───
+echo "▶ subscription"
+check "newly-registered user is in trial" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.status') == 'trial' ]]"
+check "trial user is entitled" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.entitled') == 'true' ]]"
+check "billing/plans returns at least 1 plan" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/plans' | jq 'length') -ge 1 ]]"
+check "mock upgrade flips status to active" \
+    bash -c "[[ \$(curl -sS -X POST '$BASE/api/billing/upgrade' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"plan\":\"monthly\"}' | jq -r '.status') == 'active' ]]"
+# Simulate expired user via direct DB write to verify gating
+sqlite3 "$DB" "UPDATE users SET trial_ends_at='2020-01-01', subscription_ends_at=NULL, plan='expired' WHERE email='int@test.com';"
+EXP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
+check "expired user blocked from AI with 402" bash -c "[[ '$EXP_CODE' == '402' ]]"
+check "expired user can still see billing/me (status=expired)" \
+    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.status') == 'expired' ]]"
+# Re-upgrade unblocks them
+curl -sS -o /dev/null -X POST "$BASE/api/billing/upgrade" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d '{"plan":"monthly"}'
+RE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
+# After re-upgrade, request will hit rate limiter (we exhausted earlier). Expect 400 (no key) OR 429.
+check "re-upgrade restores AI access (no longer 402)" bash -c "[[ '$RE_CODE' != '402' ]]"
 
 # ─── Summary ───
 echo

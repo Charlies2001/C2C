@@ -13,6 +13,83 @@ const PROVIDERS = [
   { id: 'gemini',    label: 'Gemini',    defaultModel: 'gemini-2.0-flash' },
 ] as const;
 
+// 每个 provider 的 Key 获取指南，展示在 provider 选择下方
+const PROVIDER_GUIDES: Record<string, {
+  name: string;
+  url: string;
+  region: '海外' | '中国' | '全球';
+  steps: string[];
+  tips?: string;
+}> = {
+  anthropic: {
+    name: 'Anthropic Console',
+    url: 'https://console.anthropic.com/settings/keys',
+    region: '海外',
+    steps: [
+      '注册 / 登录 Anthropic Console（需海外手机号 + 信用卡）',
+      '进入 Settings → API Keys，点击 Create Key',
+      '复制以 sk-ant-api03- 开头的 Key 粘贴到下方',
+    ],
+    tips: '新账号通常赠送少量免费额度；超出后按 token 计费。中国大陆需科学上网。',
+  },
+  openai: {
+    name: 'OpenAI Platform',
+    url: 'https://platform.openai.com/api-keys',
+    region: '海外',
+    steps: [
+      '注册 / 登录 OpenAI Platform（需海外手机号）',
+      '左侧菜单 API keys → Create new secret key',
+      '复制 sk- 开头的 Key 粘贴到下方',
+    ],
+    tips: '需先在 Billing 页面充值（最低 5 美元），否则调用会 429。中国大陆访问需代理。',
+  },
+  qwen: {
+    name: '阿里云百炼',
+    url: 'https://bailian.console.aliyun.com/',
+    region: '中国',
+    steps: [
+      '使用阿里云账号登录百炼控制台',
+      '左侧 API-KEY 管理 → 创建新 API-KEY',
+      '复制 sk- 开头的 Key 粘贴到下方',
+    ],
+    tips: '通义千问系列模型，国内直连快，新用户有免费 tokens。需实名认证。',
+  },
+  doubao: {
+    name: '火山引擎方舟',
+    url: 'https://console.volcengine.com/ark',
+    region: '中国',
+    steps: [
+      '使用火山引擎账号登录方舟控制台',
+      'API Key 管理 → 创建 API Key',
+      '在「在线推理」中开通豆包模型，记下推理接入点（Endpoint ID）',
+      '模型名称填 Endpoint ID（ep-xxxxx 格式），不是模型名',
+    ],
+    tips: '豆包模型需先在控制台「开通服务」并创建推理接入点。国内直连。',
+  },
+  glm: {
+    name: '智谱 BigModel',
+    url: 'https://open.bigmodel.cn/usercenter/apikeys',
+    region: '中国',
+    steps: [
+      '注册 / 登录智谱开放平台',
+      '右上角头像 → API keys → 添加新的 API Key',
+      '复制 Key 粘贴到下方',
+    ],
+    tips: 'GLM-4 系列模型，新用户有免费额度。国内直连。',
+  },
+  gemini: {
+    name: 'Google AI Studio',
+    url: 'https://aistudio.google.com/apikey',
+    region: '海外',
+    steps: [
+      '使用 Google 账号登录 AI Studio',
+      '点击 Get API key → Create API key',
+      '复制 Key 粘贴到下方',
+    ],
+    tips: '免费额度较慷慨。中国大陆需科学上网。注意 Gemini API 暂不支持部分地区。',
+  },
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -129,6 +206,39 @@ export default function SettingsModal({ open, onClose }: Props) {
             ))}
           </div>
         </div>
+
+        {/* Provider key 获取指南 */}
+        {PROVIDER_GUIDES[provider] && (
+          <div className="mb-4 p-3 bg-gray-950/40 border border-white/[0.04] rounded-xl text-xs text-gray-400 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300 font-medium">如何获取 {PROVIDER_GUIDES[provider].name} 的 API Key</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                PROVIDER_GUIDES[provider].region === '海外'
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              }`}>{PROVIDER_GUIDES[provider].region}</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1 text-gray-500">
+              {PROVIDER_GUIDES[provider].steps.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ol>
+            {PROVIDER_GUIDES[provider].tips && (
+              <p className="text-[11px] text-gray-600 italic">{PROVIDER_GUIDES[provider].tips}</p>
+            )}
+            <a
+              href={PROVIDER_GUIDES[provider].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              前往 {PROVIDER_GUIDES[provider].name}
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        )}
 
         {/* API Key input */}
         <div className="space-y-2 mb-4">

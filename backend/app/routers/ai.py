@@ -2,9 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from sqlalchemy.orm import Session
+
+from ..database import get_db
+from ..models.api_key import UserAPIKey
 from ..models.user import User
 from ..auth import get_current_user, decrypt_api_key
 from ..rate_limit import ai_global_limiter, ai_user_limiter
+from ..subscription import is_entitled
 from ..services.ai_service import (
     MissingAPIKeyError,
     _resolve_provider_config,
@@ -90,8 +95,26 @@ class GenerateProblemRequest(BaseModel):
 
 # ─── Helper: build provider_config from authenticated user's DB record ───
 
-def _provider_config_from_user(user: User) -> dict | None:
-    """Build provider_config dict from user's stored AI settings."""
+def _provider_config_from_user(user: User, db: Session) -> dict | None:
+    """Build provider_config from the user's default API key.
+
+    Reads from the new user_api_keys table; falls back to the legacy
+    single-key columns on the User row for users created before the
+    multi-key migration.
+    """
+    default_key = (
+        db.query(UserAPIKey)
+        .filter(UserAPIKey.user_id == user.id, UserAPIKey.is_default == True)  # noqa: E712
+        .first()
+    )
+    if default_key is None:
+        # Fallback to any key the user has (no default flagged for some reason)
+        default_key = db.query(UserAPIKey).filter(UserAPIKey.user_id == user.id).first()
+    if default_key and default_key.api_key_encrypted:
+        plain = decrypt_api_key(default_key.api_key_encrypted)
+        if plain:
+            return {"provider": default_key.provider, "api_key": plain, "model": default_key.model or ""}
+    # Legacy fallback (pre-migration data may live on User row)
     api_key = decrypt_api_key(user.ai_api_key_encrypted)
     if not api_key:
         return None
@@ -102,13 +125,11 @@ def _provider_config_from_user(user: User) -> dict | None:
     }
 
 
-def _require_provider_config(user: User) -> dict | None:
+def _require_provider_config(user: User, db: Session) -> dict | None:
     """Validate the user can call AI endpoints; raise HTTP 400 with friendly
     Chinese message if no key is configured (and dev fallback is off).
-
-    Returns the provider_config dict (or None when relying on dev env fallback).
     """
-    provider_config = _provider_config_from_user(user)
+    provider_config = _provider_config_from_user(user, db)
     try:
         _resolve_provider_config(provider_config)
     except MissingAPIKeyError as e:
@@ -117,9 +138,16 @@ def _require_provider_config(user: User) -> dict | None:
 
 
 async def rate_limit_ai(user: User = Depends(get_current_user)) -> User:
-    """Per-user + global DoS protection for AI endpoints. Returns the user so
-    callers can chain `Depends(rate_limit_ai)` instead of also depending on
-    `get_current_user` (FastAPI caches the inner dep)."""
+    """Combined gate for AI endpoints: subscription entitlement → rate limit.
+
+    Subscription check first so that users in trial-expired state see a clear
+    402 instead of a 429.
+    """
+    if not is_entitled(user):
+        raise HTTPException(
+            status_code=402,
+            detail="试用期已结束，请升级订阅以继续使用 AI 功能",
+        )
     if not await ai_user_limiter.try_acquire(f"user:{user.id}"):
         raise HTTPException(
             status_code=429,
@@ -138,8 +166,8 @@ async def rate_limit_ai(user: User = Depends(get_current_user)) -> User:
 # ─── Endpoints ───
 
 @router.post("/hint")
-async def hint(request: HintRequest, user: User = Depends(rate_limit_ai)):
-    provider_config = _require_provider_config(user)
+async def hint(request: HintRequest, user: User = Depends(rate_limit_ai), db: Session = Depends(get_db)):
+    provider_config = _require_provider_config(user, db)
     return StreamingResponse(
         stream_hint_response(
             request.problem_context.model_dump(),
@@ -163,8 +191,8 @@ async def teaching_sections_by_difficulty(difficulty: str):
 
 
 @router.post("/teaching-section")
-async def teaching_section(request: TeachingSectionRequest, user: User = Depends(rate_limit_ai)):
-    provider_config = _require_provider_config(user)
+async def teaching_section(request: TeachingSectionRequest, user: User = Depends(rate_limit_ai), db: Session = Depends(get_db)):
+    provider_config = _require_provider_config(user, db)
     problem_context = request.problem_context.model_dump()
     return StreamingResponse(
         stream_teaching_section(
@@ -181,8 +209,8 @@ async def teaching_section(request: TeachingSectionRequest, user: User = Depends
 
 
 @router.post("/teaching")
-async def teaching(request: TeachingRequest, user: User = Depends(rate_limit_ai)):
-    provider_config = _require_provider_config(user)
+async def teaching(request: TeachingRequest, user: User = Depends(rate_limit_ai), db: Session = Depends(get_db)):
+    provider_config = _require_provider_config(user, db)
     return StreamingResponse(
         stream_teaching_content(request.problem_context.model_dump(), provider_config=provider_config),
         media_type="text/event-stream",
@@ -191,16 +219,16 @@ async def teaching(request: TeachingRequest, user: User = Depends(rate_limit_ai)
 
 
 @router.post("/generate-problem")
-async def generate_problem(request: GenerateProblemRequest, user: User = Depends(rate_limit_ai)):
-    provider_config = _require_provider_config(user)
+async def generate_problem(request: GenerateProblemRequest, user: User = Depends(rate_limit_ai), db: Session = Depends(get_db)):
+    provider_config = _require_provider_config(user, db)
     return await generate_problem_from_description(
         request.description, provider_config=provider_config, language=request.language,
     )
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, user: User = Depends(rate_limit_ai)):
-    provider_config = _require_provider_config(user)
+async def chat(request: ChatRequest, user: User = Depends(rate_limit_ai), db: Session = Depends(get_db)):
+    provider_config = _require_provider_config(user, db)
     messages = [{"role": m.role, "content": m.content} for m in request.messages]
     return StreamingResponse(
         stream_ai_response(

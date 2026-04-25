@@ -35,6 +35,13 @@ class Settings:
     RATE_LIMIT_AI_PER_USER: int = int(os.getenv("RATE_LIMIT_AI_PER_USER", "60"))
     RATE_LIMIT_AI_GLOBAL: int = int(os.getenv("RATE_LIMIT_AI_GLOBAL", "500"))
 
+    # Subscription
+    TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
+    SUBSCRIPTION_DAYS: int = int(os.getenv("SUBSCRIPTION_DAYS", "30"))
+    # Mock /api/billing/upgrade endpoint — set true ONLY in dev/staging until a
+    # real payment provider (Stripe / WeChat / Alipay) is wired up.
+    ENABLE_MOCK_BILLING: bool = os.getenv("ENABLE_MOCK_BILLING", "false").lower() == "true"
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json | text
