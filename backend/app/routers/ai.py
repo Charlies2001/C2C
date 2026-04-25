@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..models.user import User
 from ..auth import get_current_user, decrypt_api_key
+from ..rate_limit import ai_global_limiter, ai_user_limiter
 from ..services.ai_service import (
+    MissingAPIKeyError,
+    _resolve_provider_config,
     stream_ai_response,
     stream_hint_response,
     stream_teaching_content,
@@ -99,11 +102,44 @@ def _provider_config_from_user(user: User) -> dict | None:
     }
 
 
+def _require_provider_config(user: User) -> dict | None:
+    """Validate the user can call AI endpoints; raise HTTP 400 with friendly
+    Chinese message if no key is configured (and dev fallback is off).
+
+    Returns the provider_config dict (or None when relying on dev env fallback).
+    """
+    provider_config = _provider_config_from_user(user)
+    try:
+        _resolve_provider_config(provider_config)
+    except MissingAPIKeyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return provider_config
+
+
+async def rate_limit_ai(user: User = Depends(get_current_user)) -> User:
+    """Per-user + global DoS protection for AI endpoints. Returns the user so
+    callers can chain `Depends(rate_limit_ai)` instead of also depending on
+    `get_current_user` (FastAPI caches the inner dep)."""
+    if not await ai_user_limiter.try_acquire(f"user:{user.id}"):
+        raise HTTPException(
+            status_code=429,
+            detail="请求过于频繁，请稍后再试",
+            headers={"Retry-After": "60"},
+        )
+    if not await ai_global_limiter.try_acquire("global"):
+        raise HTTPException(
+            status_code=503,
+            detail="服务繁忙，请稍后再试",
+            headers={"Retry-After": "60"},
+        )
+    return user
+
+
 # ─── Endpoints ───
 
 @router.post("/hint")
-async def hint(request: HintRequest, user: User = Depends(get_current_user)):
-    provider_config = _provider_config_from_user(user)
+async def hint(request: HintRequest, user: User = Depends(rate_limit_ai)):
+    provider_config = _require_provider_config(user)
     return StreamingResponse(
         stream_hint_response(
             request.problem_context.model_dump(),
@@ -127,8 +163,8 @@ async def teaching_sections_by_difficulty(difficulty: str):
 
 
 @router.post("/teaching-section")
-async def teaching_section(request: TeachingSectionRequest, user: User = Depends(get_current_user)):
-    provider_config = _provider_config_from_user(user)
+async def teaching_section(request: TeachingSectionRequest, user: User = Depends(rate_limit_ai)):
+    provider_config = _require_provider_config(user)
     problem_context = request.problem_context.model_dump()
     return StreamingResponse(
         stream_teaching_section(
@@ -145,8 +181,8 @@ async def teaching_section(request: TeachingSectionRequest, user: User = Depends
 
 
 @router.post("/teaching")
-async def teaching(request: TeachingRequest, user: User = Depends(get_current_user)):
-    provider_config = _provider_config_from_user(user)
+async def teaching(request: TeachingRequest, user: User = Depends(rate_limit_ai)):
+    provider_config = _require_provider_config(user)
     return StreamingResponse(
         stream_teaching_content(request.problem_context.model_dump(), provider_config=provider_config),
         media_type="text/event-stream",
@@ -155,16 +191,16 @@ async def teaching(request: TeachingRequest, user: User = Depends(get_current_us
 
 
 @router.post("/generate-problem")
-async def generate_problem(request: GenerateProblemRequest, user: User = Depends(get_current_user)):
-    provider_config = _provider_config_from_user(user)
+async def generate_problem(request: GenerateProblemRequest, user: User = Depends(rate_limit_ai)):
+    provider_config = _require_provider_config(user)
     return await generate_problem_from_description(
         request.description, provider_config=provider_config, language=request.language,
     )
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, user: User = Depends(get_current_user)):
-    provider_config = _provider_config_from_user(user)
+async def chat(request: ChatRequest, user: User = Depends(rate_limit_ai)):
+    provider_config = _require_provider_config(user)
     messages = [{"role": m.role, "content": m.content} for m in request.messages]
     return StreamingResponse(
         stream_ai_response(

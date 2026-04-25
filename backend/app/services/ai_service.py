@@ -52,8 +52,43 @@ def _get_openai_client(api_key: str, base_url: str) -> openai.AsyncOpenAI:
     return _openai_clients[cache_key]
 
 
+class MissingAPIKeyError(Exception):
+    """Raised when neither user nor (dev-only) env provides an API key."""
+
+
+def _format_llm_error(exc: Exception) -> str:
+    """Map provider SDK exceptions to a user-facing Chinese message.
+
+    Both anthropic and openai SDKs expose .status_code on APIError subclasses,
+    so we match on HTTP status when available, then fall back to a generic
+    message that hides raw stack/JSON.
+    """
+    code = getattr(exc, "status_code", None)
+    raw = getattr(exc, "message", "") or str(exc)
+    if code == 401:
+        return "API Key 无效或已过期，请在「设置」中检查或重新配置"
+    if code == 402:
+        return "API Key 余额不足，请前往 provider 控制台充值"
+    if code == 403:
+        return "Key 无权调用该模型，请检查 provider 控制台权限或更换模型"
+    if code == 404:
+        return "请求的模型不存在，请在「设置」中更换模型"
+    if code == 429:
+        return "调用频率超限或当日额度已用完，请稍后重试或检查 provider 控制台"
+    if code == 400:
+        return f"请求参数有误：{raw[:120]}"
+    if code in (500, 502, 503, 504):
+        return "AI 服务暂时不可用，请稍后重试"
+    return f"AI 服务错误，请稍后重试（{raw[:80]}）"
+
+
 def _resolve_provider_config(provider_config: dict | None) -> dict:
-    """Resolve provider config with fallback to Anthropic env key."""
+    """Resolve provider config from user-supplied data.
+
+    BYOK model: users supply their own keys via Settings. The
+    `ANTHROPIC_API_KEY` env var is honored ONLY when ALLOW_ENV_KEY_FALLBACK
+    is true — for local dev convenience, never in production.
+    """
     if provider_config and provider_config.get("api_key"):
         provider = provider_config.get("provider", "anthropic")
         model = provider_config.get("model", "")
@@ -64,10 +99,10 @@ def _resolve_provider_config(provider_config: dict | None) -> dict:
             else:
                 model = PROVIDER_REGISTRY.get(provider, {}).get("default_model", "")
         return {"provider": provider, "api_key": api_key, "model": model}
-    # Fallback to env
-    if settings.ANTHROPIC_API_KEY:
+    # Dev-only fallback (off by default in prod). See config.ALLOW_ENV_KEY_FALLBACK.
+    if settings.ALLOW_ENV_KEY_FALLBACK and settings.ANTHROPIC_API_KEY:
         return {"provider": "anthropic", "api_key": settings.ANTHROPIC_API_KEY, "model": "claude-sonnet-4-6"}
-    return {}
+    raise MissingAPIKeyError("请在「设置」中配置 API Key 后再使用 AI 功能")
 
 
 async def _stream_llm_response(
@@ -76,11 +111,11 @@ async def _stream_llm_response(
     max_tokens: int,
     provider_config: dict | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Unified streaming LLM call. Yields plain text tokens."""
+    """Unified streaming LLM call. Yields plain text tokens.
+
+    Raises MissingAPIKeyError if no key is configured.
+    """
     cfg = _resolve_provider_config(provider_config)
-    if not cfg:
-        yield ""
-        return
 
     provider = cfg["provider"]
     api_key = cfg["api_key"]
@@ -140,10 +175,11 @@ async def _call_llm(
     max_tokens: int,
     provider_config: dict | None = None,
 ) -> str:
-    """Unified non-streaming LLM call. Returns full text."""
+    """Unified non-streaming LLM call. Returns full text.
+
+    Raises MissingAPIKeyError if no key is configured.
+    """
     cfg = _resolve_provider_config(provider_config)
-    if not cfg:
-        return ""
 
     provider = cfg["provider"]
     api_key = cfg["api_key"]
@@ -673,7 +709,7 @@ async def stream_teaching_section(
         yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
-        yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
+        yield f'data: {json.dumps({"error": _format_llm_error(e)}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (asyncio.CancelledError, GeneratorExit):
         return
@@ -793,7 +829,7 @@ async def generate_problem_from_description(user_description: str, provider_conf
     except json.JSONDecodeError as e:
         return {"success": False, "error": f"AI 返回的内容解析失败（{e.msg}，位置 {e.pos}），请重试"}
     except (anthropic.APIError, openai.APIError) as e:
-        return {"success": False, "error": f"AI 服务错误: {str(e)}"}
+        return {"success": False, "error": _format_llm_error(e)}
     except Exception as e:
         return {"success": False, "error": f"生成题目时出错: {str(e)}"}
 
@@ -918,7 +954,7 @@ async def stream_ai_response(
         yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
-        yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
+        yield f'data: {json.dumps({"error": _format_llm_error(e)}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (asyncio.CancelledError, GeneratorExit):
         return
@@ -1020,7 +1056,7 @@ async def stream_hint_response(
         yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
-        yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
+        yield f'data: {json.dumps({"error": _format_llm_error(e)}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (asyncio.CancelledError, GeneratorExit):
         return
@@ -1085,7 +1121,7 @@ async def stream_teaching_content(
         yield f'data: {json.dumps({"error": "AI 服务响应超时，请重试"}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (anthropic.APIError, openai.APIError) as e:
-        yield f'data: {json.dumps({"error": f"AI 服务错误: {str(e)}"}, ensure_ascii=False)}\n\n'
+        yield f'data: {json.dumps({"error": _format_llm_error(e)}, ensure_ascii=False)}\n\n'
         yield "data: [DONE]\n\n"
     except (asyncio.CancelledError, GeneratorExit):
         return

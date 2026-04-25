@@ -55,6 +55,9 @@ DATABASE_URL="sqlite:///$DB" \
 JWT_SECRET_KEY="int-test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
 ENCRYPTION_KEY="int-test-enc-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" \
 ANTHROPIC_API_KEY="" \
+ALLOW_ENV_KEY_FALLBACK="false" \
+RATE_LIMIT_AI_PER_USER="3" \
+RATE_LIMIT_AI_GLOBAL="100" \
 LOG_FORMAT="json" LOG_LEVEL="INFO" LOG_DIR="$LOG_DIR" \
 python3 -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" \
     > "$TMP/backend.log" 2>&1 &
@@ -160,6 +163,33 @@ check "authenticated request has user_id" \
     bash -c "grep '\"path\": \"/api/auth/me\"' '$LOG_FILE' | head -1 | jq -e '.user_id == 1' > /dev/null"
 check "x-request-id header in response" \
     bash -c "curl -sS -D- '$BASE/api/problems/' -o /dev/null | grep -qi '^x-request-id:'"
+
+# ─── 7. BYOK guards (Day 5 — #1, #3) ───
+echo "▶ BYOK guards"
+HINT_BODY='{"problem_context":{"title":"t","description":"d","code":"","output":"","testResults":"","difficulty":"Easy","starterCode":""},"previous_hints":[]}'
+# #1: no key → 400 with Chinese message
+RESP=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
+check "no-key AI request returns 400" bash -c "[[ '$RESP' == '400' ]]"
+DETAIL=$(curl -sS -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY" | jq -r '.detail')
+check "no-key error message is Chinese guidance" \
+    bash -c "echo '$DETAIL' | grep -q '设置.*API Key'"
+
+# #3: rate limit (RATE_LIMIT_AI_PER_USER=3 → 4th call should be 429).
+# We've already made 2 hint calls above; do 2 more then expect 429.
+curl -sS -o /dev/null -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY"
+LIMITED=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
+check "exceeding per-user AI rate limit returns 429" bash -c "[[ '$LIMITED' == '429' ]]"
+RA=$(curl -sS -D- -o /dev/null -X POST "$BASE/api/ai/hint" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY" \
+    | tr -d '\r' | grep -i '^retry-after:' | awk '{print $2}')
+check "429 response includes Retry-After header" bash -c "[[ '$RA' == '60' ]]"
+# Sanity: non-AI endpoint not rate-limited
+NON_AI=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/api/auth/me" -H "Authorization: Bearer $ACCESS")
+check "non-AI endpoint not affected by AI rate limit" bash -c "[[ '$NON_AI' == '200' ]]"
 
 # ─── Summary ───
 echo
