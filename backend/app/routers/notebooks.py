@@ -57,6 +57,7 @@ class ItemResponse(BaseModel):
     problem_slug: str
     problem_difficulty: str
     problem_category: str
+    problem_description: str
     note: str
     answer_code: str
     include_answer: bool
@@ -93,6 +94,7 @@ def _serialize_item(item: NotebookItem) -> ItemResponse:
         problem_slug=p.slug if p else "",
         problem_difficulty=p.difficulty if p else "",
         problem_category=p.category if p else "",
+        problem_description=p.description if p else "",
         note=item.note or "",
         answer_code=item.answer_code or "",
         include_answer=item.include_answer,

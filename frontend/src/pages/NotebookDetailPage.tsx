@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   type NotebookDetail,
@@ -241,7 +242,18 @@ export default function NotebookDetailPage() {
             </span>
             <span className="text-xs text-gray-600">{item.problem_category}</span>
           </Link>
-          <button onClick={onRemove} className="text-xs text-gray-500 hover:text-rose-400 transition-colors">移除</button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeAns}
+                onChange={(e) => setIncludeAns(e.target.checked)}
+                className="accent-violet-500"
+              />
+              <span>带答案</span>
+            </label>
+            <button onClick={onRemove} className="text-xs text-gray-500 hover:text-rose-400 transition-colors">移除</button>
+          </div>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-gray-600 mb-4">
           {item.created_at && <span title={fmtDateTime(item.created_at)}>添加于 {fmtDate(item.created_at)}</span>}
@@ -253,7 +265,46 @@ export default function NotebookDetailPage() {
           )}
         </div>
 
-        <div className={`grid gap-4 ${includeAns ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* 左侧：题目 */}
+          <div className="flex flex-col gap-4 min-w-0">
+            <div className="flex flex-col">
+              <div className="text-xs text-gray-400 font-medium mb-1.5">📖 题目</div>
+              <div className="flex-1 min-h-[280px] px-5 py-4 bg-gray-950/40 border border-white/[0.04] rounded-xl overflow-auto">
+                <div className="prose prose-invert prose-sm max-w-none prose-violet
+                  prose-headings:text-white prose-headings:font-semibold
+                  prose-h2:text-lg prose-h2:mb-2 prose-h2:mt-0
+                  prose-h3:text-sm prose-h3:mb-2
+                  prose-p:text-gray-300 prose-p:leading-relaxed
+                  prose-code:text-violet-300 prose-code:bg-violet-500/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                  prose-pre:bg-gray-950/60 prose-pre:border prose-pre:border-white/[0.06] prose-pre:rounded-lg
+                  prose-li:text-gray-300 prose-li:marker:text-violet-400
+                  prose-strong:text-white"
+                >
+                  <ReactMarkdown>{item.problem_description || '*该题目无描述*'}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
+
+            {/* 答案代码块（左侧底部） */}
+            {includeAns && (
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="text-xs text-gray-400 font-medium">💻 我的答案</div>
+                  <span className="text-[10px] text-gray-600">{code.split('\n').length} 行</span>
+                </div>
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder={'class Solution(object):\n    def f(self, ...):\n        pass'}
+                  className="w-full min-h-[200px] px-4 py-3 bg-gray-950/60 border border-white/[0.04] rounded-xl text-xs text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
+                  spellCheck={false}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 右侧：纯笔记 */}
           <div className="flex flex-col">
             <div className="flex items-center justify-between mb-1.5">
               <div className="text-xs text-gray-400 font-medium">📝 笔记</div>
@@ -262,37 +313,9 @@ export default function NotebookDetailPage() {
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="思路、踩坑、复习要点…"
-              className="w-full min-h-[280px] flex-1 px-4 py-3 bg-gray-950/40 border border-white/[0.04] rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
+              placeholder="思路、踩坑、复习要点、易错对比…"
+              className="w-full flex-1 min-h-[500px] px-5 py-4 bg-gray-950/40 border border-white/[0.04] rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
             />
-          </div>
-
-          <div className="flex flex-col">
-            <label className="flex items-center justify-between mb-1.5 text-xs text-gray-400 font-medium">
-              <span>💻 答案 / 解法代码</span>
-              <span className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                <input
-                  type="checkbox"
-                  checked={includeAns}
-                  onChange={(e) => setIncludeAns(e.target.checked)}
-                  className="accent-violet-500"
-                />
-                <span>显示</span>
-              </span>
-            </label>
-            {includeAns ? (
-              <textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder={'class Solution(object):\n    def f(self, ...):\n        pass'}
-                className="w-full min-h-[280px] flex-1 px-4 py-3 bg-gray-950/60 border border-white/[0.04] rounded-xl text-xs text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
-                spellCheck={false}
-              />
-            ) : (
-              <div className="text-[11px] text-gray-600 italic px-4 py-3 border border-dashed border-white/[0.04] rounded-xl">
-                未显示答案——勾选「显示」以编辑解法代码
-              </div>
-            )}
           </div>
         </div>
       </div>

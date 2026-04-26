@@ -17,6 +17,7 @@ export interface NotebookItem {
   problem_slug: string;
   problem_difficulty: string;
   problem_category: string;
+  problem_description: string;
   note: string;
   answer_code: string;
   include_answer: boolean;
