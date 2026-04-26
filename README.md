@@ -1,6 +1,6 @@
 # C2C — Coding to Creating
 
-> **v1.0** · AI 驱动的编程教学平台
+> AI 驱动的开源编程教学平台 · BYOK（用自己的 LLM API Key）· 完全免费
 
 <p align="center">
   <img src="docs/images/banner.png" alt="C2C Banner" width="800" />
@@ -11,7 +11,36 @@
   从读懂题目到写出代码，像一位耐心的老师陪在你身边，逐步引导。
 </p>
 
-[中文](#设计初衷) | [English](#why-c2c)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/python-3.12+-green.svg" alt="Python 3.12+" />
+  <img src="https://img.shields.io/badge/node-20+-green.svg" alt="Node 20+" />
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
+</p>
+
+[中文](#三步上手) | [English](#why-c2c)
+
+---
+
+## 三步上手
+
+C2C 是开源项目，**不收费、不消耗你的钱**——你用自己申请的 LLM API Key（Anthropic / OpenAI / 通义 / 豆包 / GLM / Gemini 任选其一）。
+
+```bash
+# 1. 克隆 + 启动（要 Docker）
+git clone <repo-url> && cd codingbot
+cp backend/.env.example backend/.env
+docker compose up -d
+
+# 2. 打开浏览器
+open http://localhost:3001
+
+# 3. 注册账号 → 设置弹窗里填 API Key → 开始学习
+```
+
+> 不想装 Docker？见 [本地开发](#本地开发不用-docker)。
+
+如果你想自己部署到云服务器对外服务，参考 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ---
 
@@ -165,59 +194,34 @@ C2C 是为**想真正学会编程**的人设计的——无论你是编程初学
 
 ---
 
-## 快速开始
+## 本地开发（不用 Docker）
 
 ### 前置要求
 
-- Node.js ≥ 18
-- Python ≥ 3.10
+- Node.js ≥ 20
+- Python ≥ 3.12
 - 任一支持的 LLM 供应商的 API Key
 
-### 1. 克隆 & 安装
+### 安装 + 启动
 
 ```bash
-git clone https://github.com/Charlies2001/C2C.git
-cd C2C
-
-# 后端
+# 后端（终端 1）
 cd backend
 cp .env.example .env
 pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 
-# 前端
-cd ../frontend
-npm install
-```
-
-### 2. 运行
-
-```bash
-# 终端 1 — 后端
-cd backend
-uvicorn app.main:app --reload
-
-# 终端 2 — 前端
+# 前端（终端 2）
 cd frontend
+npm install
 npm run dev
 ```
 
-打开 http://localhost:5173 → 点击右上角 **设置**（齿轮图标）→ 选择供应商 → 输入 API Key → 开始学习。
-
-### Docker 一键启动（推荐）
-
-> 需要先安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Mac/Windows）或 [Docker Engine](https://docs.docker.com/engine/install/)（Linux）。
-
-```bash
-cp backend/.env.example backend/.env
-docker compose up --build
-```
-
-打开 http://localhost:3000  无需安装 Node.js 或 Python。
+打开 http://localhost:5173 → 注册账号 → **设置**（齿轮图标）→ 填 API Key → 开始学习。
 
 ### 生产部署
 
 公网上线（HTTPS + 外部 PostgreSQL + 结构化日志）请参考 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
-生产使用独立的 `docker-compose.prod.yml`，并通过 Let's Encrypt 签发 TLS 证书。
 
 ---
 

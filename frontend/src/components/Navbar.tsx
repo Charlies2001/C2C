@@ -3,11 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SettingsModal from './SettingsModal';
 import ProfileSetupModal from './ProfileSetupModal';
-import UpgradeModal from './UpgradeModal';
 import GrowthTree from './GrowthTree/GrowthTree';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { fetchBillingMe, type BillingMe } from '../api/billing';
 
 export default function Navbar() {
   const { t } = useTranslation();
@@ -16,8 +14,6 @@ export default function Navbar() {
   const isLanding = location.pathname === '/';
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [billing, setBilling] = useState<BillingMe | null>(null);
   const userProfile = useStore((s) => s.userProfile);
   const loadTreeProgress = useStore((s) => s.loadTreeProgress);
   const { user, logout } = useAuthStore();
@@ -25,11 +21,6 @@ export default function Navbar() {
   useEffect(() => {
     loadTreeProgress();
   }, [loadTreeProgress]);
-
-  useEffect(() => {
-    if (!user) { setBilling(null); return; }
-    fetchBillingMe().then(setBilling).catch(() => setBilling(null));
-  }, [user, showUpgrade]);
 
   const handleLogout = () => {
     logout();
@@ -76,19 +67,6 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {billing && billing.status !== 'active' && (
-                <button
-                  onClick={() => setShowUpgrade(true)}
-                  className={`px-2.5 py-1 text-[11px] rounded-lg border transition-all ${
-                    billing.status === 'expired'
-                      ? 'border-rose-500/40 text-rose-300 hover:bg-rose-500/10'
-                      : 'border-amber-500/40 text-amber-300 hover:bg-amber-500/10'
-                  }`}
-                  title={billing.status === 'expired' ? '试用已结束' : '试用期内，升级解锁完整功能'}
-                >
-                  {billing.status === 'expired' ? '订阅已过期' : '升级'}
-                </button>
-              )}
               <button
                 onClick={() => setShowProfile(true)}
                 className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -134,7 +112,6 @@ export default function Navbar() {
         onClose={() => setShowProfile(false)}
         initialProfile={userProfile}
       />
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
     </>
   );
 }

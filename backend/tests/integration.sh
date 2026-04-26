@@ -58,7 +58,6 @@ ANTHROPIC_API_KEY="" \
 ALLOW_ENV_KEY_FALLBACK="false" \
 RATE_LIMIT_AI_PER_USER="3" \
 RATE_LIMIT_AI_GLOBAL="100" \
-ENABLE_MOCK_BILLING="true" \
 LOG_FORMAT="json" LOG_LEVEL="INFO" LOG_DIR="$LOG_DIR" \
 python3 -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" \
     > "$TMP/backend.log" 2>&1 &
@@ -214,45 +213,7 @@ check "429 response includes Retry-After header" bash -c "[[ '$RA' == '60' ]]"
 NON_AI=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/api/auth/me" -H "Authorization: Bearer $ACCESS")
 check "non-AI endpoint not affected by AI rate limit" bash -c "[[ '$NON_AI' == '200' ]]"
 
-# ─── 8. Subscription state (Day 5 — #5a) ───
-echo "▶ subscription"
-check "newly-registered user is in trial" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.status') == 'trial' ]]"
-check "trial user is entitled" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.entitled') == 'true' ]]"
-check "billing/plans returns at least 1 plan" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/plans' | jq 'length') -ge 1 ]]"
-check "mock upgrade flips status to active" \
-    bash -c "[[ \$(curl -sS -X POST '$BASE/api/billing/upgrade' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"plan\":\"monthly\"}' | jq -r '.status') == 'active' ]]"
-# Simulate expired user via direct DB write to verify gating
-sqlite3 "$DB" "UPDATE users SET trial_ends_at='2020-01-01', subscription_ends_at=NULL, plan='expired' WHERE email='int@test.com';"
-EXP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
-    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
-check "expired user blocked from AI with 402" bash -c "[[ '$EXP_CODE' == '402' ]]"
-check "expired user can still see billing/me (status=expired)" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/me' -H 'Authorization: Bearer $ACCESS' | jq -r '.status') == 'expired' ]]"
-# Re-upgrade unblocks them
-curl -sS -o /dev/null -X POST "$BASE/api/billing/upgrade" \
-    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d '{"plan":"monthly"}'
-RE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ai/hint" \
-    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d "$HINT_BODY")
-# After re-upgrade, request will hit rate limiter (we exhausted earlier). Expect 400 (no key) OR 429.
-check "re-upgrade restores AI access (no longer 402)" bash -c "[[ '$RE_CODE' != '402' ]]"
-
-# ─── 9. Payment providers (Day 5 — #5b) ───
-echo "▶ payment providers"
-check "providers list returns alipay + wechat" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/providers' | jq 'length') == '2' ]]"
-check "providers report unavailable when creds missing" \
-    bash -c "[[ \$(curl -sS '$BASE/api/billing/providers' | jq '[.[] | select(.available==false)] | length') == '2' ]]"
-check "checkout for alipay (unconfigured) returns 503" \
-    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/checkout' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"provider\":\"alipay\",\"plan\":\"monthly\"}') == '503' ]]"
-check "checkout for unknown provider returns 400" \
-    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/checkout' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"provider\":\"stripe\",\"plan\":\"monthly\"}') == '400' ]]"
-check "alipay webhook returns 503 when unconfigured" \
-    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/alipay/notify') == '503' ]]"
-
-# ─── 10. Notes + Notebooks ───
+# ─── 8. Notes + Notebooks ───
 echo "▶ notes & notebooks"
 check "GET note for un-noted problem returns empty content" \
     bash -c "[[ \$(curl -sS '$BASE/api/notes/1' -H 'Authorization: Bearer $ACCESS' | jq -r '.content') == '' ]]"

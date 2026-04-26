@@ -19,12 +19,6 @@ class User(Base):
     ai_model = Column(String(100), default="")
     created_at = Column(DateTime, server_default=func.now())
 
-    # ─── Subscription state ───
-    # plan values: "trial" | "active" | "expired"
-    plan = Column(String(20), nullable=False, default="trial")
-    trial_ends_at = Column(DateTime, nullable=True)         # set on register
-    subscription_ends_at = Column(DateTime, nullable=True)   # set on successful payment
-
     api_keys = relationship(
         "UserAPIKey",
         back_populates="user",

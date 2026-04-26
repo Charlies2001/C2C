@@ -10,7 +10,6 @@ from ..auth import (
     create_access_token, create_refresh_token, _decode_token,
     get_current_user, encrypt_api_key, decrypt_api_key,
 )
-from ..subscription import grant_trial
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -99,7 +98,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         hashed_password=hash_password(req.password),
         nickname=req.nickname,
     )
-    grant_trial(user)
     db.add(user)
     db.commit()
     db.refresh(user)

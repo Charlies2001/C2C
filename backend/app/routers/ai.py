@@ -9,7 +9,6 @@ from ..models.api_key import UserAPIKey
 from ..models.user import User
 from ..auth import get_current_user, decrypt_api_key
 from ..rate_limit import ai_global_limiter, ai_user_limiter
-from ..subscription import is_entitled
 from ..services.ai_service import (
     MissingAPIKeyError,
     _resolve_provider_config,
@@ -138,16 +137,7 @@ def _require_provider_config(user: User, db: Session) -> dict | None:
 
 
 async def rate_limit_ai(user: User = Depends(get_current_user)) -> User:
-    """Combined gate for AI endpoints: subscription entitlement → rate limit.
-
-    Subscription check first so that users in trial-expired state see a clear
-    402 instead of a 429.
-    """
-    if not is_entitled(user):
-        raise HTTPException(
-            status_code=402,
-            detail="试用期已结束，请升级订阅以继续使用 AI 功能",
-        )
+    """DoS protection for AI endpoints (per-user + global rolling-minute window)."""
     if not await ai_user_limiter.try_acquire(f"user:{user.id}"):
         raise HTTPException(
             status_code=429,
