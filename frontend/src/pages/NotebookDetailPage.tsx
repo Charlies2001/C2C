@@ -98,14 +98,14 @@ export default function NotebookDetailPage() {
 
   if (!nb) {
     return (
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6">
         {error ? <div className="text-rose-400">{error}</div> : <div className="text-gray-500">加载中…</div>}
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6">
       <div className="flex items-baseline justify-between mb-1">
         <Link to="/problems" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← 返回题库</Link>
         <button onClick={handleDeleteNotebook} className="text-xs text-rose-400/70 hover:text-rose-300 transition-colors">删除笔记本</button>
@@ -153,9 +153,9 @@ export default function NotebookDetailPage() {
 
       {error && <div className="text-xs text-rose-400 mb-3">{error}</div>}
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {nb.items.length === 0 && (
-          <div className="text-center py-12 text-gray-500 border border-dashed border-white/[0.06] rounded-xl">
+          <div className="text-center py-16 text-gray-500 border border-dashed border-white/[0.06] rounded-2xl">
             空白笔记本——点「添加题目」选择题库中的题目
           </div>
         )}
@@ -230,20 +230,20 @@ export default function NotebookDetailPage() {
     }, [includeAns]);  // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
-      <div className="border border-white/[0.06] rounded-2xl bg-gradient-to-br from-gray-900/40 to-gray-950/20 p-4">
-        <div className="flex items-center justify-between mb-1">
-          <Link to={`/problem/${item.problem_id}`} className="flex items-center gap-2 group">
-            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${DIFFICULTY_COLOR[item.problem_difficulty] || 'text-gray-400'}`}>
+      <div className="border border-white/[0.06] rounded-2xl bg-gradient-to-br from-gray-900/40 to-gray-950/20 p-6">
+        <div className="flex items-center justify-between mb-2">
+          <Link to={`/problem/${item.problem_id}`} className="flex items-center gap-3 group">
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${DIFFICULTY_COLOR[item.problem_difficulty] || 'text-gray-400'}`}>
               {item.problem_difficulty}
             </span>
-            <span className="text-base text-gray-100 group-hover:text-violet-300 transition-colors font-medium">
+            <span className="text-lg text-gray-100 group-hover:text-violet-300 transition-colors font-semibold">
               {item.problem_title}
             </span>
-            <span className="text-[10px] text-gray-600">{item.problem_category}</span>
+            <span className="text-xs text-gray-600">{item.problem_category}</span>
           </Link>
-          <button onClick={onRemove} className="text-[11px] text-gray-500 hover:text-rose-400 transition-colors">移除</button>
+          <button onClick={onRemove} className="text-xs text-gray-500 hover:text-rose-400 transition-colors">移除</button>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-600 mb-3">
+        <div className="flex items-center gap-2 text-[11px] text-gray-600 mb-4">
           {item.created_at && <span title={fmtDateTime(item.created_at)}>添加于 {fmtDate(item.created_at)}</span>}
           {item.updated_at && item.updated_at !== item.created_at && (
             <>
@@ -253,38 +253,47 @@ export default function NotebookDetailPage() {
           )}
         </div>
 
-        <div>
-          <div className="text-[11px] text-gray-500 mb-1">笔记</div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="思路、踩坑、复习要点…"
-            className="w-full min-h-[80px] px-3 py-2 bg-gray-950/40 border border-white/[0.04] rounded-lg text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/40 resize-y"
-          />
-        </div>
-
-        <div className="mt-3">
-          <label className="flex items-center justify-between mb-1 text-[11px] text-gray-500">
-            <span>答案 / 解法代码</span>
-            <span className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={includeAns}
-                onChange={(e) => setIncludeAns(e.target.checked)}
-                className="accent-violet-500"
-              />
-              <span>显示</span>
-            </span>
-          </label>
-          {includeAns && (
+        <div className={`grid gap-4 ${includeAns ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-xs text-gray-400 font-medium">📝 笔记</div>
+              <span className="text-[10px] text-gray-600">{note.length} 字</span>
+            </div>
             <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={'class Solution(object):\n    def f(self, ...):\n        pass'}
-              className="w-full min-h-[120px] px-3 py-2 bg-gray-950/60 border border-white/[0.04] rounded-lg text-xs text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-violet-500/40 resize-y"
-              spellCheck={false}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="思路、踩坑、复习要点…"
+              className="w-full min-h-[280px] flex-1 px-4 py-3 bg-gray-950/40 border border-white/[0.04] rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
             />
-          )}
+          </div>
+
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between mb-1.5 text-xs text-gray-400 font-medium">
+              <span>💻 答案 / 解法代码</span>
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={includeAns}
+                  onChange={(e) => setIncludeAns(e.target.checked)}
+                  className="accent-violet-500"
+                />
+                <span>显示</span>
+              </span>
+            </label>
+            {includeAns ? (
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={'class Solution(object):\n    def f(self, ...):\n        pass'}
+                className="w-full min-h-[280px] flex-1 px-4 py-3 bg-gray-950/60 border border-white/[0.04] rounded-xl text-xs text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-violet-500/40 resize-y leading-relaxed"
+                spellCheck={false}
+              />
+            ) : (
+              <div className="text-[11px] text-gray-600 italic px-4 py-3 border border-dashed border-white/[0.04] rounded-xl">
+                未显示答案——勾选「显示」以编辑解法代码
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
