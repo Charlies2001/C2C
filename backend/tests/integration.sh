@@ -252,6 +252,31 @@ check "checkout for unknown provider returns 400" \
 check "alipay webhook returns 503 when unconfigured" \
     bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/billing/alipay/notify') == '503' ]]"
 
+# ─── 10. Notes + Notebooks ───
+echo "▶ notes & notebooks"
+check "GET note for un-noted problem returns empty content" \
+    bash -c "[[ \$(curl -sS '$BASE/api/notes/1' -H 'Authorization: Bearer $ACCESS' | jq -r '.content') == '' ]]"
+check "PUT note persists" \
+    bash -c "curl -sS -o /dev/null -X PUT '$BASE/api/notes/1' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"content\":\"hash map\"}' && [[ \$(curl -sS '$BASE/api/notes/1' -H 'Authorization: Bearer $ACCESS' | jq -r '.content') == 'hash map' ]]"
+NB_ID=$(curl -sS -X POST "$BASE/api/notebooks/" -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d '{"name":"Test NB"}' | jq -r '.id')
+check "POST /api/notebooks creates notebook" bash -c "[[ '$NB_ID' =~ ^[0-9]+$ ]]"
+check "list notebooks returns at least 1" \
+    bash -c "[[ \$(curl -sS '$BASE/api/notebooks/' -H 'Authorization: Bearer $ACCESS' | jq 'length') -ge 1 ]]"
+ITEM_ID=$(curl -sS -X POST "$BASE/api/notebooks/$NB_ID/items" -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" -d '{"problem_id":1,"include_answer":true,"answer_code":"pass","note":"easy"}' | jq -r '.id')
+check "add problem to notebook returns item id" bash -c "[[ '$ITEM_ID' =~ ^[0-9]+$ ]]"
+check "duplicate add returns 409" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/notebooks/'$NB_ID'/items' -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"problem_id\":1,\"include_answer\":true}') == '409' ]]"
+check "GET notebook detail includes joined problem title" \
+    bash -c "[[ \$(curl -sS '$BASE/api/notebooks/'$NB_ID -H 'Authorization: Bearer $ACCESS' | jq -r '.items[0].problem_title') != '' ]]"
+check "PUT item updates note + answer_code" \
+    bash -c "curl -sS -o /dev/null -X PUT '$BASE/api/notebooks/'$NB_ID'/items/'$ITEM_ID -H 'Authorization: Bearer $ACCESS' -H 'Content-Type: application/json' -d '{\"note\":\"NEW\",\"answer_code\":\"def f(): pass\"}' && [[ \$(curl -sS '$BASE/api/notebooks/'$NB_ID -H 'Authorization: Bearer $ACCESS' | jq -r '.items[0].note') == 'NEW' ]]"
+check "DELETE item removes it" \
+    bash -c "curl -sS -o /dev/null -X DELETE '$BASE/api/notebooks/'$NB_ID'/items/'$ITEM_ID -H 'Authorization: Bearer $ACCESS' && [[ \$(curl -sS '$BASE/api/notebooks/'$NB_ID -H 'Authorization: Bearer $ACCESS' | jq '.items | length') == '0' ]]"
+check "DELETE notebook returns 204" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE '$BASE/api/notebooks/'$NB_ID -H 'Authorization: Bearer $ACCESS') == '204' ]]"
+check "GET deleted notebook returns 404" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/notebooks/'$NB_ID -H 'Authorization: Bearer $ACCESS') == '404' ]]"
+
 # ─── Summary ───
 echo
 echo "────────────────────────────────────────"

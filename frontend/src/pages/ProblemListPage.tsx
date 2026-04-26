@@ -5,6 +5,8 @@ import { fetchProblems, deleteProblem } from '../api/problems';
 import ProblemCard from '../components/ProblemList/ProblemCard';
 import ProblemFilters from '../components/ProblemList/ProblemFilters';
 import CollectionFilterChips from '../components/ProblemList/CollectionFilterChips';
+import ActivityCalendar from '../components/ProblemList/ActivityCalendar';
+import NotebooksPanel from '../components/ProblemList/NotebooksPanel';
 import CreateProblemModal from '../components/CreateProblemModal';
 import ProfileSetupModal from '../components/ProfileSetupModal';
 
@@ -77,6 +79,10 @@ export default function ProblemListPage() {
           </span>
           <span className="text-gray-500 ml-1">{t('problemList.subtitleHint')}</span>
         </p>
+      </div>
+      <div className="mb-5 relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-3">
+        <div className="lg:col-span-3"><ActivityCalendar /></div>
+        <div className="lg:col-span-2"><NotebooksPanel /></div>
       </div>
       <div className="mb-4 relative z-10 space-y-3">
         <ProblemFilters />

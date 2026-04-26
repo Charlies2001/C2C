@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage';
 import ProblemListPage from './pages/ProblemListPage';
 import ProblemPage from './pages/ProblemPage';
 import AuthPage from './pages/AuthPage';
+import NotebookDetailPage from './pages/NotebookDetailPage';
 import { useAuthStore } from './store/useAuthStore';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ function AppShell() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/problems" element={<ProtectedRoute><ProblemListPage /></ProtectedRoute>} />
           <Route path="/problem/:id" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
+          <Route path="/notebooks/:id" element={<ProtectedRoute><NotebookDetailPage /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>

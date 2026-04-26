@@ -22,13 +22,24 @@ interface ProblemDraft {
   test_cases: TestCase[];
 }
 
+// Default starter follows LeetCode "class Solution" style — no imports.
+const STARTER_TEMPLATE = `class Solution(object):
+    def methodName(self, arg1, arg2):
+        """
+        :type arg1: List[int]
+        :type arg2: int
+        :rtype: int
+        """
+        pass
+`;
+
 const EMPTY_DRAFT: ProblemDraft = {
   title: '',
   slug: '',
   difficulty: 'Easy',
   category: '',
   description: '',
-  starter_code: '',
+  starter_code: STARTER_TEMPLATE,
   helper_code: '',
   test_cases: [{ input: '', expected: '' }],
 };

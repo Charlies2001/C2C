@@ -765,17 +765,34 @@ Output a **strictly valid JSON object** with no markdown fences or extra text.
 - Ensure the output can be parsed directly by json.loads()
 
 ## Content Rules
-1. test_cases input is executable Python code: define variables first, then print(function_name(...))
-2. test_cases expected is the print output string (lists use "[1, 2]" with spaces)
-3. Linked list / tree problems must provide node classes and helper functions in helper_code
-4. starter_code should only contain the function signature + pass, no solution
-5. Generate 18-22 test_cases covering:
+1. **starter_code MUST use the LeetCode `class Solution` style** with a method, NOT a free function:
+   ```python
+   class Solution(object):
+       def methodName(self, arg1, arg2):
+           '''
+           :type arg1: List[int]
+           :type arg2: int
+           :rtype: int
+           '''
+           pass
+   ```
+   In the actual JSON output, use `\"\"\"` for the docstring quotes, not single quotes.
+2. **DO NOT import any packages** in starter_code, helper_code, or test_cases.
+   Built-in types (list, dict, set) are always available; if a problem genuinely
+   needs collections.deque or heapq, prefer redesigning the signature to avoid them.
+3. test_cases input is executable Python code: define variables first, then
+   `print(Solution().methodName(...))`. Method name MUST match starter_code.
+4. test_cases expected is the print output string (lists use "[1, 2]" with spaces)
+5. Linked list / tree problems must provide ListNode / TreeNode classes and helper
+   builder functions in helper_code (NOT in starter_code, NO imports there either)
+6. starter_code should only contain the Solution class + method signature + docstring + pass
+7. Generate 18-22 test_cases covering:
    - **Basic cases** (3-4): standard inputs from examples
    - **Normal cases** (5-6): normal inputs of varying sizes
    - **Edge cases** (4-5): empty input, single element, minimum, maximum
    - **Extreme cases** (3-4): all same elements, reversed, very large values, special characters
    - **Trap cases** (2-3): common mistakes (off-by-one, overflow, duplicates)
-6. {lang_cfg["desc_lang"]}
+8. {lang_cfg["desc_lang"]}
 
 Output JSON directly, first character {{, last character }}."""
 
