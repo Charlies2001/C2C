@@ -19,6 +19,21 @@ const DIFFICULTY_COLOR: Record<string, string> = {
   Hard: 'text-rose-400 bg-rose-400/10',
 };
 
+function fmtDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = fmtDate(iso);
+  return `${date} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export default function NotebookDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -116,7 +131,16 @@ export default function NotebookDetailPage() {
         )}
         <span className="text-xs text-gray-500">{nb.items.length} 题</span>
       </div>
-      {nb.description && <p className="text-sm text-gray-500 mb-4">{nb.description}</p>}
+      {nb.description && <p className="text-sm text-gray-500 mb-2">{nb.description}</p>}
+      <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-4">
+        {nb.created_at && <span>创建于 {fmtDate(nb.created_at)}</span>}
+        {nb.updated_at && nb.updated_at !== nb.created_at && (
+          <>
+            <span className="text-gray-700">·</span>
+            <span>最近更新 {fmtDateTime(nb.updated_at)}</span>
+          </>
+        )}
+      </div>
 
       <div className="flex justify-end mb-3">
         <button
@@ -207,7 +231,7 @@ export default function NotebookDetailPage() {
 
     return (
       <div className="border border-white/[0.06] rounded-2xl bg-gradient-to-br from-gray-900/40 to-gray-950/20 p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <Link to={`/problem/${item.problem_id}`} className="flex items-center gap-2 group">
             <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${DIFFICULTY_COLOR[item.problem_difficulty] || 'text-gray-400'}`}>
               {item.problem_difficulty}
@@ -218,6 +242,15 @@ export default function NotebookDetailPage() {
             <span className="text-[10px] text-gray-600">{item.problem_category}</span>
           </Link>
           <button onClick={onRemove} className="text-[11px] text-gray-500 hover:text-rose-400 transition-colors">移除</button>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-gray-600 mb-3">
+          {item.created_at && <span title={fmtDateTime(item.created_at)}>添加于 {fmtDate(item.created_at)}</span>}
+          {item.updated_at && item.updated_at !== item.created_at && (
+            <>
+              <span className="text-gray-700">·</span>
+              <span title={fmtDateTime(item.updated_at)}>编辑于 {fmtDateTime(item.updated_at)}</span>
+            </>
+          )}
         </div>
 
         <div>

@@ -6,6 +6,7 @@ export interface NotebookSummary {
   description: string;
   color: string;
   item_count: number;
+  created_at: string | null;
   updated_at: string | null;
 }
 
@@ -20,6 +21,8 @@ export interface NotebookItem {
   answer_code: string;
   include_answer: boolean;
   position: number;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface NotebookDetail {
@@ -28,6 +31,7 @@ export interface NotebookDetail {
   description: string;
   color: string;
   items: NotebookItem[];
+  created_at: string | null;
   updated_at: string | null;
 }
 

@@ -32,6 +32,7 @@ class NotebookSummary(BaseModel):
     description: str
     color: str
     item_count: int
+    created_at: str | None = None
     updated_at: str | None = None
 
 
@@ -60,6 +61,8 @@ class ItemResponse(BaseModel):
     answer_code: str
     include_answer: bool
     position: int
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class NotebookDetail(BaseModel):
@@ -68,6 +71,7 @@ class NotebookDetail(BaseModel):
     description: str
     color: str
     items: list[ItemResponse]
+    created_at: str | None = None
     updated_at: str | None = None
 
 
@@ -93,6 +97,8 @@ def _serialize_item(item: NotebookItem) -> ItemResponse:
         answer_code=item.answer_code or "",
         include_answer=item.include_answer,
         position=item.position,
+        created_at=item.created_at.isoformat() if item.created_at else None,
+        updated_at=item.updated_at.isoformat() if item.updated_at else None,
     )
 
 
@@ -103,6 +109,7 @@ def _serialize_summary(nb: Notebook) -> NotebookSummary:
         description=nb.description or "",
         color=nb.color or "violet",
         item_count=len(nb.items),
+        created_at=nb.created_at.isoformat() if nb.created_at else None,
         updated_at=nb.updated_at.isoformat() if nb.updated_at else None,
     )
 
@@ -133,6 +140,7 @@ def get_notebook(notebook_id: int, user: User = Depends(get_current_user), db: S
         description=nb.description or "",
         color=nb.color or "violet",
         items=[_serialize_item(i) for i in nb.items],
+        created_at=nb.created_at.isoformat() if nb.created_at else None,
         updated_at=nb.updated_at.isoformat() if nb.updated_at else None,
     )
 

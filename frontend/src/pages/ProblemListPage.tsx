@@ -80,9 +80,9 @@ export default function ProblemListPage() {
           <span className="text-gray-500 ml-1">{t('problemList.subtitleHint')}</span>
         </p>
       </div>
-      <div className="mb-5 relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-3">
-        <div className="lg:col-span-3"><ActivityCalendar /></div>
-        <div className="lg:col-span-2"><NotebooksPanel /></div>
+      <div className="mb-5 relative z-10 space-y-4">
+        <ActivityCalendar />
+        <NotebooksPanel />
       </div>
       <div className="mb-4 relative z-10 space-y-3">
         <ProblemFilters />
