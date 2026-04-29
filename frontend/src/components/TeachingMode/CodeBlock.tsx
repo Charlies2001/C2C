@@ -90,7 +90,7 @@ export default function CodeBlock({ className, children, ...rest }: CodeBlockPro
 
   const isInline = !className && !String(children).includes('\n');
 
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Cleanup copy timer on unmount
   useEffect(() => {

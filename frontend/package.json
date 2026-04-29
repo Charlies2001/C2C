@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:desktop": "npm run fetch-pyodide && VITE_PYODIDE_URL=/pyodide/ npm run build",
+    "fetch-pyodide": "node scripts/fetch-pyodide.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -1,6 +1,5 @@
 import copy
 import logging
-import subprocess
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -46,17 +45,23 @@ def _get_localized_seeds(language: str) -> list[dict]:
 
 
 def _run_alembic_upgrade():
-    """Run alembic upgrade head on startup to ensure schema is up to date."""
+    """Run alembic upgrade head on startup. Uses the in-process API (works in
+    PyInstaller-frozen apps where the `alembic` CLI isn't present)."""
     import os
-    alembic_ini = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
-    result = subprocess.run(
-        ["alembic", "-c", alembic_ini, "upgrade", "head"],
-        capture_output=True, text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__)),
-    )
-    if result.returncode != 0:
-        logger.error(f"Alembic upgrade failed: {result.stderr}")
-        raise RuntimeError(f"Database migration failed: {result.stderr}")
+    from alembic import command
+    from alembic.config import Config
+
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    alembic_ini = os.path.join(backend_dir, "alembic.ini")
+    cfg = Config(alembic_ini)
+    # Force script_location to an absolute path (the .ini default is relative).
+    cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+    try:
+        command.upgrade(cfg, "head")
+    except Exception as e:
+        logger.error(f"Alembic upgrade failed: {e}")
+        raise
     logger.info("Database migrations applied successfully")
 
 
@@ -179,3 +184,34 @@ app.include_router(notebooks.router)
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+# ─── Optional: serve a built React frontend (desktop / single-process mode) ───
+# Mounted last so /api/* and /api/health win over SPA's catch-all.
+if settings.SERVE_STATIC_PATH:
+    import os
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
+    _static_dir = settings.SERVE_STATIC_PATH
+    if not os.path.isdir(_static_dir):
+        logger.warning(f"SERVE_STATIC_PATH set but not a directory: {_static_dir}")
+    else:
+        # Mount static assets (Vite hashed bundles, /pyodide/*, /assets/*, etc.)
+        app.mount("/assets", StaticFiles(directory=os.path.join(_static_dir, "assets")), name="assets")
+        if os.path.isdir(os.path.join(_static_dir, "pyodide")):
+            app.mount("/pyodide", StaticFiles(directory=os.path.join(_static_dir, "pyodide")), name="pyodide")
+
+        # SPA catch-all: any non-/api path returns index.html so React Router can handle it.
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404)
+            # Try a real file first (favicon, robots.txt, etc.)
+            candidate = os.path.join(_static_dir, full_path)
+            if full_path and os.path.isfile(candidate):
+                return FileResponse(candidate)
+            return FileResponse(os.path.join(_static_dir, "index.html"))
+
+        logger.info(f"Serving frontend from {_static_dir}")

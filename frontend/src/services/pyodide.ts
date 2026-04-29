@@ -6,6 +6,15 @@ declare global {
   }
 }
 
+// Pyodide source — overridable at build time so the desktop bundle can ship its own
+// copy and run fully offline. Defaults to the public CDN for web/dev builds.
+// To use a local copy: run `npm run fetch-pyodide` then build with
+// VITE_PYODIDE_URL=/pyodide/ to load from same-origin.
+const PYODIDE_URL = (
+  import.meta.env.VITE_PYODIDE_URL ||
+  'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/'
+).replace(/\/?$/, '/');
+
 let pyodide: any = null;
 let loadPromise: Promise<any> | null = null;
 
@@ -14,19 +23,16 @@ export async function initPyodide(): Promise<any> {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    // Load the script if not already loaded
     if (!window.loadPyodide) {
       await new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js';
+        script.src = `${PYODIDE_URL}pyodide.js`;
         script.onload = () => resolve();
         script.onerror = () => reject(new Error('Failed to load Pyodide'));
         document.head.appendChild(script);
       });
     }
-    pyodide = await window.loadPyodide({
-      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/',
-    });
+    pyodide = await window.loadPyodide({ indexURL: PYODIDE_URL });
     return pyodide;
   })();
 

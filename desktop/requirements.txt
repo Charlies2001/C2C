@@ -1,0 +1,4 @@
+# Desktop launcher additional deps (on top of backend/requirements.txt)
+pystray>=0.19.5
+Pillow>=10.0.0
+pyinstaller>=6.0

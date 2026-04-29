@@ -35,6 +35,12 @@ class Settings:
     RATE_LIMIT_AI_PER_USER: int = int(os.getenv("RATE_LIMIT_AI_PER_USER", "60"))
     RATE_LIMIT_AI_GLOBAL: int = int(os.getenv("RATE_LIMIT_AI_GLOBAL", "500"))
 
+    # Desktop / single-process mode: serve a built React frontend from this dir.
+    # When empty (default), backend is API-only and the frontend is hosted by Vite/nginx.
+    # When set (e.g. by the desktop launcher), backend mounts <dir> at root and falls
+    # back to <dir>/index.html for SPA routes.
+    SERVE_STATIC_PATH: str = os.getenv("SERVE_STATIC_PATH", "")
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json | text

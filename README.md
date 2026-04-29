@@ -26,21 +26,35 @@
 
 C2C 是开源项目，**不收费、不消耗你的钱**——你用自己申请的 LLM API Key（Anthropic / OpenAI / 通义 / 豆包 / GLM / Gemini 任选其一）。
 
+### 方式 1：下载桌面版（推荐 · 零依赖）
+
+去 [Releases](https://github.com/Charlies2001/C2C-coding-coach/releases) 下载对应平台的包：
+
+| 平台 | 文件 | 怎么用 |
+|------|------|--------|
+| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | 解压拖到「应用程序」，首次启动右键→打开 |
+| Windows (x64) | `CodingBot-windows-x64.zip` | 解压双击 `CodingBot.exe`，SmartScreen 提示点「更多信息→仍要运行」 |
+| Linux (x64) | `CodingBot-linux-x64.tar.gz` | `tar xzf` 后 `./CodingBot/CodingBot` |
+
+启动后会自动打开浏览器，左上角会出现一个 C2C 系统托盘图标——这是 app 在运行的标志，**关闭浏览器标签后请通过托盘菜单退出**，否则后台还在跑。
+
+> ⚠️ 因为没买代码签名证书，首次启动系统会警告「未知开发者」。这是开源软件的常态，需要你手动放行一次。
+
+### 方式 2：Docker 一行命令（自己跑后端）
+
 ```bash
-# 1. 克隆 + 启动（要 Docker）
-git clone <repo-url> && cd codingbot
+git clone https://github.com/Charlies2001/C2C-coding-coach.git
+cd C2C-coding-coach
 cp backend/.env.example backend/.env
 docker compose up -d
-
-# 2. 打开浏览器
 open http://localhost:3001
-
-# 3. 注册账号 → 设置弹窗里填 API Key → 开始学习
 ```
 
-> 不想装 Docker？见 [本地开发](#本地开发不用-docker)。
+### 方式 3：本地开发（贡献代码用）
 
-如果你想自己部署到云服务器对外服务，参考 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
+见 [本地开发](#本地开发不用-docker)。
+
+部署到云服务器对外服务参考 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ---
 

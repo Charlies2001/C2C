@@ -1,0 +1,3 @@
+# Pyodide runtime is downloaded by `npm run fetch-pyodide`, not committed.
+*
+!.gitignore
