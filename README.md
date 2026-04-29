@@ -32,13 +32,30 @@ C2C 是开源项目，**不收费、不消耗你的钱**——你用自己申请
 
 | 平台 | 文件 | 怎么用 |
 |------|------|--------|
-| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | 解压拖到「应用程序」，首次启动右键→打开 |
-| Windows (x64) | `CodingBot-windows-x64.zip` | 解压双击 `CodingBot.exe`，SmartScreen 提示点「更多信息→仍要运行」 |
+| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | 解压拖到「应用程序」 |
+| Windows (x64) | `CodingBot-windows-x64.zip` | 解压双击 `CodingBot.exe` |
 | Linux (x64) | `CodingBot-linux-x64.tar.gz` | `tar xzf` 后 `./CodingBot/CodingBot` |
 
-启动后会自动打开浏览器，左上角会出现一个 C2C 系统托盘图标——这是 app 在运行的标志，**关闭浏览器标签后请通过托盘菜单退出**，否则后台还在跑。
+启动后会自动打开浏览器，左上角/任务栏角落会出现一个 C2C 系统托盘图标——这是 app 在运行的标志，**关闭浏览器标签后请通过托盘菜单退出**，否则后台还在跑。
 
-> ⚠️ 因为没买代码签名证书，首次启动系统会警告「未知开发者」。这是开源软件的常态，需要你手动放行一次。
+#### ⚠️ 首次启动会被系统拦截（无代码签名）
+
+开源项目没买代码签名证书，三个系统都会拦截一次。**只需放行一次，之后不再提示。**
+
+**macOS**（看到「Apple 无法验证 CodingBot 是否包含恶意软件」）：
+
+终端跑一行（最快）：
+```bash
+xattr -dr com.apple.quarantine /Applications/CodingBot.app
+```
+
+或图形化：双击 app → 警告框点「完成」→ 打开 **System Settings → Privacy & Security** → 滚到底部找到 "CodingBot was blocked" → 点 **「Open Anyway」**。
+
+**Windows**（看到 SmartScreen 蓝色「Windows 已保护你的电脑」）：
+
+点警告框里的 **「更多信息」** → 出现 **「仍要运行」** 按钮 → 点它。
+
+**Linux**：通常不会被拦。如果文件没有执行权限，跑 `chmod +x ./CodingBot/CodingBot`。
 
 ### 方式 2：Docker 一行命令（自己跑后端）
 
