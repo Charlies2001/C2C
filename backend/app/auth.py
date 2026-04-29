@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from cryptography.fernet import Fernet
 import base64
@@ -15,16 +15,30 @@ from .database import get_db
 from .models.user import User
 
 # ─── Password hashing ───
+# Direct bcrypt API (skipping passlib which is incompatible with bcrypt >= 5.0
+# as of 2026 — passlib 1.7.4 still tries to read bcrypt.__about__.__version__,
+# which was removed in bcrypt 5.0 and breaks set_backend).
+#
+# bcrypt only hashes the first 72 bytes of input, so we truncate explicitly.
+# Pre-hashing with sha256 would lift this limit, but at the cost of breaking
+# any existing hash — for a fresh project, plain truncation is simpler.
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_BCRYPT_MAX_BYTES = 72
+
+
+def _to_bytes(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_to_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(_to_bytes(plain), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 # ─── JWT tokens ───

@@ -44,7 +44,6 @@ hiddenimports = [
     'uvicorn.lifespan',
     'uvicorn.lifespan.on',
     # Auth / crypto
-    'passlib.handlers.bcrypt',
     'bcrypt',
     'jose.backends.cryptography_backend',
     'cryptography',
