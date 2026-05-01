@@ -174,14 +174,31 @@ C2C 是为**想真正学会编程**的人设计的——无论你是编程初学
 
 64 种组合——每种都会改变 AI 的讲解方式、重点和语气。
 
-### 收藏夹 & 成长树
+### 笔记 & 笔记本
 
-- 星标收藏题目
-- 将题目整理到命名收藏夹中
-- 按收藏夹筛选题目列表
-- 创建、重命名、删除收藏夹
-- 成长可视化：**种子 → 发芽 → 幼苗 → 小树 → 大树 → 开花**
-- 每题记录解题状态，按难度统计
+每道题独立存放的个人笔记 + 主题式归档：
+
+- **题目笔记**：在题目页底部，写下思路、踩坑、复习要点，800ms 防抖自动保存
+- **笔记本**：把题目按主题归档（如「DP 复习」「字节面试题」）
+  - 每条笔记本条目：左侧题目描述（Markdown 渲染） + 可选答案代码，右侧纯笔记
+  - 「带答案」开关一键控制是否显示解法代码
+  - 显示创建/最近编辑日期
+- 笔记和笔记本都存后端 SQLite，**换设备登录后能继续**
+
+### 刷题日历 & 收藏夹
+
+- **GitHub 风格热力图**：26 周刷题记录可视化
+  - 4 级深浅显示每天题量
+  - 当前连续天数 / 最长连续 / 总题数统计
+- **收藏夹**：星标题目，按主题命名分组（前端 localStorage）
+- **成长树**：种子 → 发芽 → 幼苗 → 小树 → 大树 → 开花，按已解题数等级跃迁
+
+### 账号 & API Key 安全存储
+
+- **JWT 认证**：注册即用本地账号，密码 bcrypt 哈希
+- **API Key Fernet 对称加密**保存到后端 SQLite——前端代码、网络请求、localStorage 都看不到明文
+- **多 Provider Key 切换**：可同时存 Anthropic + OpenAI + 通义 + ... 多个 Key，一键切默认
+- **桌面 app 数据全本地**：账号、笔记、Key 都在 `~/Library/Application Support/CodingBot/coding_bot.db`
 
 ### 多语言支持
 
@@ -201,7 +218,7 @@ C2C 是为**想真正学会编程**的人设计的——无论你是编程初学
 | 字节豆包 | doubao-1.5-pro-32k | 通过 OpenAI 兼容 API |
 | 智谱 GLM | glm-4-flash | 通过 OpenAI 兼容 API |
 
-在 UI 中配置——无需环境变量。API Key 存储在浏览器 localStorage 中。
+在 UI 中配置——无需环境变量。API Key 经 Fernet 对称加密后存储在后端 SQLite，前端任何地方都看不到明文。
 
 ---
 
@@ -219,7 +236,9 @@ C2C 是为**想真正学会编程**的人设计的——无论你是编程初学
 
 **供应商抽象** — Anthropic 使用原生 SDK；其他所有供应商通过 OpenAI SDK + 自定义 `base_url` 路由。新增供应商只需在注册表中加一条记录。
 
-**按题目 localStorage 持久化** — 对话历史、提示、教学内容和代码全部按题目存储在 localStorage 中。无需认证，离线可用，数据保持私密。
+**前后端持久化分工** — 短暂、私密、按题目的状态（对话历史、提示、当前代码草稿、刷题日历进度）走 localStorage；账号、API Key、笔记、笔记本走后端 SQLite + alembic 自动迁移。Key 用 Fernet 对称加密存储。
+
+**桌面 app = 一个 Python 进程** — PyInstaller 把 backend + frontend dist + Pyodide runtime 全打进去；启动后用固定端口 17234 + 系统托盘退出 + ~/Library/Application Support/ 下的用户数据目录。Pyodide 13 MB 本地化，离线也能跑学生代码。
 
 **章节 key 系统** — 教学章节内部使用英文 key（`readCode`、`syntax`、`approach`...），显示时通过 i18n 翻译，与后端通信时使用中文标题。前端保持整洁的同时兼容后端。
 
@@ -290,63 +309,108 @@ npm run dev
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | React 19, TypeScript, Vite 7, Tailwind CSS 4, Zustand, Monaco Editor, React Router 7 |
-| 后端 | Python 3.12, FastAPI, SQLAlchemy, SQLite |
-| AI | Anthropic SDK, OpenAI SDK（多供应商） |
-| 代码运行时 | Pyodide 0.27（浏览器内 Python） |
+| 前端 | React 19, TypeScript, Vite 7, Tailwind CSS 4, Zustand, Monaco Editor, React Router 7, qrcode.react |
+| 后端 | Python 3.12, FastAPI, SQLAlchemy 2, SQLite / PostgreSQL, Alembic（自动迁移） |
+| 认证 / 加密 | python-jose (JWT), bcrypt（密码哈希）, cryptography (Fernet API Key 加密) |
+| AI | Anthropic SDK, OpenAI SDK（六大供应商兼容） |
+| 代码运行时 | Pyodide 0.27（浏览器内 Python，桌面版本地化离线运行） |
 | 图表 | Mermaid.js（教学内容中） |
-| 国际化 | i18next + react-i18next |
-| 部署 | Docker + Nginx |
+| 国际化 | i18next + react-i18next（中/英/日/韩） |
+| 桌面打包 | PyInstaller, pystray（系统托盘） |
+| Web 部署 | Docker Compose + Nginx + Let's Encrypt |
 
 ## 项目结构
 
 ```
-C2C/
+C2C-coding-coach/
 ├── frontend/                     # React SPA
 │   ├── src/
-│   │   ├── pages/                # LandingPage, ProblemListPage, ProblemPage
+│   │   ├── pages/                # Landing / ProblemList / Problem / Auth / NotebookDetail
 │   │   ├── components/
 │   │   │   ├── TeachingMode/     # Blackboard, CodeBlock, GuidedCoding, MiniCodeEditor
-│   │   │   ├── ProblemWorkspace/ # OutputPanel, HintPanel, ErrorJumpBanner
-│   │   │   ├── ProblemList/      # ProblemCard, ProblemFilters, CollectionFilterChips
+│   │   │   ├── ProblemWorkspace/ # OutputPanel, HintPanel, NotePanel, ErrorJumpBanner
+│   │   │   ├── ProblemList/      # ProblemCard, ProblemFilters, ActivityCalendar, NotebooksPanel
 │   │   │   ├── AIChat/           # AIChatPanel
-│   │   │   └── GrowthTree/      # GrowthTree, StatsPanel, TreeSVG
-│   │   ├── api/                  # REST + SSE streaming clients
+│   │   │   ├── GrowthTree/       # GrowthTree, StatsPanel, TreeSVG
+│   │   │   ├── SettingsModal.tsx # API Key + provider 选择 + 6 个 provider 获取教程
+│   │   │   └── AddProblemToNotebookModal.tsx
+│   │   ├── api/                  # auth, ai, problems, notes, notebooks (REST + SSE)
 │   │   ├── i18n/locales/         # zh-CN, en-US, ja-JP, ko-KR
-│   │   ├── services/             # Pyodide integration
-│   │   ├── store/                # Zustand state (per-problem persistence)
-│   │   └── utils/                # Section titles, error mapping
+│   │   ├── services/             # Pyodide（VITE_PYODIDE_URL 可切本地/CDN）
+│   │   ├── store/                # useStore + useAuthStore (Zustand)
+│   │   └── utils/
+│   ├── public/pyodide/           # （桌面 build 时由 fetch-pyodide 下载）
+│   ├── scripts/fetch-pyodide.mjs
 │   ├── Dockerfile
-│   └── nginx.conf
+│   ├── nginx.conf                # dev
+│   └── nginx-ssl.conf            # prod (HTTPS)
 ├── backend/
 │   ├── app/
-│   │   ├── main.py               # App entry, auto-migration, seed logic
-│   │   ├── config.py             # Environment settings
-│   │   ├── database.py           # SQLAlchemy engine
-│   │   ├── models/               # Problem model
-│   │   ├── routers/
-│   │   │   ├── problems.py       # CRUD endpoints
-│   │   │   └── ai.py             # Streaming AI endpoints
-│   │   ├── services/
-│   │   │   └── ai_service.py     # Multi-provider AI, prompt engineering
-│   │   └── seed/                 # 10 problems × 4 languages
-│   ├── requirements.txt
-│   └── Dockerfile
-├── docker-compose.yml
+│   │   ├── main.py               # FastAPI 入口，含中间件、SPA 静态托管
+│   │   ├── config.py             # 环境变量集中
+│   │   ├── auth.py               # JWT + bcrypt + Fernet
+│   │   ├── database.py           # SQLAlchemy（SQLite/PG 双模式）
+│   │   ├── logging_config.py     # JSON formatter + request_id contextvar
+│   │   ├── rate_limit.py         # 异步内存令牌桶
+│   │   ├── models/               # user, api_key, problem, note, notebook
+│   │   ├── routers/              # auth, problems, ai, notes, notebooks
+│   │   ├── services/ai_service.py
+│   │   └── seed/                 # 10 道种子题 × 4 语言
+│   ├── alembic/versions/         # schema 迁移
+│   ├── alembic.ini
+│   ├── tests/integration.sh      # 52 项 e2e 回归
+│   └── requirements.txt
+├── desktop/                      # PyInstaller 桌面 app
+│   ├── launcher.py               # 启动器：固定端口 + 系统托盘
+│   ├── launcher.spec
+│   └── requirements.txt          # pystray, Pillow, pyinstaller
+├── docs/
+│   ├── DEPLOYMENT.md             # 公网部署（HTTPS / cert / 备份 / 回滚）
+│   └── DEV_LOG_2026-04-24.md
+├── .github/
+│   ├── workflows/desktop-release.yml  # tag push 触发三平台 build
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
+├── docker-compose.yml            # dev
+├── docker-compose.prod.yml       # prod (HTTPS)
+├── CONTRIBUTING.md
 ├── LICENSE                       # MIT
 └── README.md
 ```
 
 ## API 参考
 
+### 认证（JWT）
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `POST` | `/api/auth/register` | 注册（返回 access + refresh token） |
+| `POST` | `/api/auth/login` | 登录 |
+| `POST` | `/api/auth/refresh` | 用 refresh_token 换新 access_token |
+| `GET` | `/api/auth/me` | 当前用户信息 |
+| `GET` | `/api/auth/api-keys` | 列出已存的 LLM Key（不返回明文） |
+| `POST` | `/api/auth/api-keys` | 新增/更新某 provider 的 Key |
+| `PUT` | `/api/auth/api-keys/{id}/default` | 切换默认 Key |
+| `DELETE` | `/api/auth/api-keys/{id}` | 删除 Key |
+
 ### 题目
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
-| `GET` | `/api/problems` | 题目列表（可选 `?difficulty=&category=`） |
-| `GET` | `/api/problems/:id` | 获取单个题目 |
-| `POST` | `/api/problems` | 创建题目 |
-| `DELETE` | `/api/problems/:id` | 删除题目 |
+| `GET` | `/api/problems/` | 列表（可选 `?difficulty=&category=`） |
+| `GET` | `/api/problems/{id}` | 详情 |
+| `POST` | `/api/problems/` | 创建（要登录） |
+| `PUT` | `/api/problems/{id}` | 修改（要登录） |
+| `DELETE` | `/api/problems/{id}` | 删除（要登录） |
+
+### 笔记 & 笔记本
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `GET` / `PUT` | `/api/notes/{problem_id}` | 单题笔记 GET / 上修改 |
+| `GET` / `POST` | `/api/notebooks/` | 列出 / 创建笔记本 |
+| `GET` / `PUT` / `DELETE` | `/api/notebooks/{id}` | 笔记本详情 / 改 / 删 |
+| `POST` / `PUT` / `DELETE` | `/api/notebooks/{id}/items[/{item_id}]` | 加题 / 改条目 / 删条目 |
 
 ### AI（全部通过 SSE 流式传输）
 
@@ -355,8 +419,14 @@ C2C/
 | `POST` | `/api/ai/chat` | 苏格拉底式对话辅导 |
 | `POST` | `/api/ai/hint` | 渐进式提示（自动判断级别） |
 | `POST` | `/api/ai/teaching-section` | 生成单个教学章节 |
+| `POST` | `/api/ai/teaching` | 教学整体（少用） |
 | `POST` | `/api/ai/generate-problem` | 根据描述生成题目 |
-| `GET` | `/api/ai/teaching-sections/:difficulty` | 获取对应难度的章节标题列表 |
+| `GET` | `/api/ai/teaching-sections/{difficulty}` | 获取对应难度章节标题 |
+
+所有 AI 端点都受 BYOK 保护：未配置 Key → 400 中文引导；超额 → 429 + Retry-After。
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
 | `GET` | `/api/health` | 健康检查 |
 
 ---
@@ -388,47 +458,58 @@ C2C is built for people who want to **learn**, not just copy solutions — wheth
 
 **AI Chat Tutor (Socratic Method)** — Sees your problem, code, and output. Guides through questioning, never dumps the answer.
 
-**In-Browser Python Execution** — Powered by Pyodide, zero setup. Run mode for output, Submit mode for all test cases (18–22 per problem).
+**In-Browser Python Execution** — Powered by Pyodide, zero setup. Run mode for output, Submit mode for all test cases (18–22 per problem). Bundled offline in the desktop app.
 
 **Smart Error Detection** — Auto-detects `SyntaxError`, `IndexError`, etc., maps to teaching chapters, one-click jump to review.
 
-**AI Problem Generation** — Describe a problem in one sentence → AI generates full structure (title, description, starter code, test cases). Supports generation in the current UI language.
+**AI Problem Generation** — Describe a problem in one sentence → AI generates a full LeetCode-style problem (`class Solution`, no imports, 18–22 test cases).
 
-**Personalization** — 4 dimensions (experience, goal, learning style, teaching tone), 64 combinations. AI adapts accordingly.
+**Personalization** — 4 dimensions × 64 combinations of experience / goal / learning style / teaching tone.
 
-**Collections & Growth Tree** — Bookmark management, difficulty stats, growth visualization (Seed → Flowering Tree).
+**Notes & Notebooks** — Per-problem auto-saved notes + thematic notebooks where you can collect problems and write solution code alongside the description.
 
-**Multi-Language** — UI supports Chinese/English/Japanese/Korean with instant switching.
+**Activity Calendar** — GitHub-style 26-week heatmap, current/longest streak.
 
-**Multi-LLM Support** — Anthropic, OpenAI, Gemini, Qwen, Doubao, GLM — configure in the UI.
+**Account & Encrypted Keys** — JWT auth + bcrypt; LLM API keys are Fernet-encrypted at rest. Supports multiple keys per user with one-click default switching.
+
+**Multi-Language** — UI supports Chinese/English/Japanese/Korean.
+
+**Multi-LLM Support** — Anthropic, OpenAI, Gemini, Qwen, Doubao, GLM — configure in the UI with built-in provider sign-up guides.
 
 ### Quick Start
 
-```bash
-git clone https://github.com/Charlies2001/C2C.git
-cd C2C
+#### Option 1: Download desktop app (recommended, zero deps)
 
-# Backend
+Grab a release for your OS at [Releases](https://github.com/Charlies2001/C2C-coding-coach/releases):
+- `CodingBot-macos-arm64.zip` — drag to Applications, then `xattr -dr com.apple.quarantine /Applications/CodingBot.app` to bypass Gatekeeper
+- `CodingBot-windows-x64.zip` — unzip and run `CodingBot.exe` (SmartScreen → "More info" → "Run anyway")
+- `CodingBot-linux-x64.tar.gz` — `tar xzf` and `./CodingBot/CodingBot`
+
+Launch → tray icon appears → browser opens → register an account → enter your LLM API key in Settings.
+
+#### Option 2: Docker
+
+```bash
+git clone https://github.com/Charlies2001/C2C-coding-coach.git
+cd C2C-coding-coach
+cp backend/.env.example backend/.env
+docker compose up -d
+open http://localhost:3001
+```
+
+#### Option 3: Local dev (for contributors)
+
+```bash
+# Backend (terminal 1)
 cd backend
 cp .env.example .env
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 
-# Frontend (new terminal)
+# Frontend (terminal 2)
 cd frontend
 npm install
-npm run dev
+npm run dev   # http://localhost:5173
 ```
 
-Open http://localhost:5173 → click **Settings** (gear icon) → select provider → enter API key → start learning.
-
-### Docker (Recommended)
-
-> Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac/Windows) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux).
-
-```bash
-cp backend/.env.example backend/.env
-docker compose up --build
-```
-
-Open http://localhost:3000. No Node.js or Python installation needed.
+For self-hosted production deployment (HTTPS + PostgreSQL), see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
