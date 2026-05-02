@@ -6,6 +6,7 @@ import ProblemListPage from './pages/ProblemListPage';
 import ProblemPage from './pages/ProblemPage';
 import AuthPage from './pages/AuthPage';
 import NotebookDetailPage from './pages/NotebookDetailPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useAuthStore } from './store/useAuthStore';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -45,13 +46,27 @@ function AppShell() {
     <div className="h-screen flex flex-col bg-gray-950 text-gray-100">
       {!isAuthPage && <Navbar />}
       <main className={`flex-1 flex ${isProblemPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/problems" element={<ProtectedRoute><ProblemListPage /></ProtectedRoute>} />
-          <Route path="/problem/:id" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
-          <Route path="/notebooks/:id" element={<ProtectedRoute><NotebookDetailPage /></ProtectedRoute>} />
-        </Routes>
+        <ErrorBoundary scope="主界面">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/problems" element={<ProtectedRoute><ProblemListPage /></ProtectedRoute>} />
+            <Route path="/problem/:id" element={
+              <ProtectedRoute>
+                <ErrorBoundary scope="题目页">
+                  <ProblemPage />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/notebooks/:id" element={
+              <ProtectedRoute>
+                <ErrorBoundary scope="笔记本">
+                  <NotebookDetailPage />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );
