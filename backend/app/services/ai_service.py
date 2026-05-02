@@ -63,8 +63,13 @@ def _format_llm_error(exc: Exception) -> str:
     so we match on HTTP status when available, then fall back to a generic
     message that hides raw stack/JSON.
     """
+    from ..logging_config import _redact
+
     code = getattr(exc, "status_code", None)
-    raw = getattr(exc, "message", "") or str(exc)
+    # Defensive: even though provider error.message rarely includes the API
+    # key, we redact before echoing back to the user just in case a future
+    # SDK version (or a misbehaving server) leaks one.
+    raw = _redact(getattr(exc, "message", "") or str(exc))
     if code == 401:
         return "API Key 无效或已过期，请在「设置」中检查或重新配置"
     if code == 402:

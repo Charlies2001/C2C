@@ -2,12 +2,33 @@
 import json
 import logging
 import os
+import re
 import sys
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
 from .config import settings
+
+
+# ─── Sensitive value redaction ───
+# Belt-and-suspenders: even if a contributor accidentally passes an API key into
+# `logger.extra=...` or it shows up in a serialized exception, we mask it before
+# it reaches stdout / the log file.
+_SECRET_PATTERN = re.compile(
+    r'\b(?:sk-(?:ant|proj|or)-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9_-]{20,}|gAAAAA[A-Za-z0-9_=-]{40,})',
+)
+
+
+def _redact(value):
+    """Recursively mask anything that looks like an API key or Fernet token."""
+    if isinstance(value, str):
+        return _SECRET_PATTERN.sub(lambda m: m.group(0)[:6] + '…[REDACTED]', value)
+    if isinstance(value, dict):
+        return {k: ('[REDACTED]' if k in {'api_key', 'api_key_encrypted', 'password', 'JWT_SECRET_KEY', 'ENCRYPTION_KEY'} else _redact(v)) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(_redact(v) for v in value)
+    return value
 
 # Contextvar populated by RequestLoggingMiddleware; JsonFormatter pulls it into every record.
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
@@ -30,16 +51,16 @@ class JsonFormatter(logging.Formatter):
             "ts": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": _redact(record.getMessage()),
         }
         rid = request_id_ctx.get()
         if rid:
             payload["request_id"] = rid
         for key, value in record.__dict__.items():
             if key not in _STANDARD_ATTRS and not key.startswith("_"):
-                payload[key] = value
+                payload[key] = _redact(value)
         if record.exc_info:
-            payload["exc"] = self.formatException(record.exc_info)
+            payload["exc"] = _redact(self.formatException(record.exc_info))
         return json.dumps(payload, ensure_ascii=False, default=str)
 
 
