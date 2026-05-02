@@ -170,9 +170,18 @@ check "GET deleted id returns 404" \
 
 # ─── 6. Structured logging ───
 echo "▶ logging"
-# let in-flight writes flush
-sleep 0.5
 LOG_FILE="$LOG_DIR/codingbot.log"
+# Wait up to 5s for the log file to contain the request lines we expect.
+# RotatingFileHandler is line-buffered, but on slower CI runners it can take
+# a beat for the OS to actually flush (sleep 0.5 was enough on macOS, not Linux).
+for _ in $(seq 1 25); do
+    if [[ -f "$LOG_FILE" ]] && grep -q '"msg": "request"' "$LOG_FILE" \
+        && grep -q '"path": "/api/auth/me"' "$LOG_FILE"; then
+        break
+    fi
+    sleep 0.2
+done
+
 check "log file exists" \
     bash -c "[[ -f '$LOG_FILE' ]]"
 check "log file contains JSON lines" \
