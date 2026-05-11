@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { generateProblem, createProblem } from '../api/problems';
+import { generateProblem, createProblem, fetchReferenceSolution } from '../api/problems';
 import type { TestCase } from '../types/problem';
+import { runPythonCode } from '../services/pyodide';
+import { useStore } from '../store/useStore';
+
+interface VerifyResult {
+  index: number;
+  refOutput: string;
+  matches: boolean;
+  error?: string;
+}
 
 interface Props {
   open: boolean;
@@ -46,12 +55,18 @@ const EMPTY_DRAFT: ProblemDraft = {
 
 export default function CreateProblemModal({ open, onClose, onCreated }: Props) {
   const { t } = useTranslation();
+  const pyodideReady = useStore((s) => s.pyodideReady);
   const [stage, setStage] = useState<Stage>('input');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<ProblemDraft>({ ...EMPTY_DRAFT });
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [verifyResults, setVerifyResults] = useState<VerifyResult[] | null>(null);
+  const [referenceCode, setReferenceCode] = useState<string | null>(null);
+  const [showReference, setShowReference] = useState(false);
 
   if (!open) return null;
 
@@ -99,7 +114,60 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
     setError('');
     setLoading(false);
     setSaving(false);
+    setVerifying(false);
+    setVerifyError('');
+    setVerifyResults(null);
+    setReferenceCode(null);
+    setShowReference(false);
     onClose();
+  };
+
+  const handleVerifyTestCases = async () => {
+    if (verifying || !pyodideReady) return;
+    if (!draft.description.trim() || !draft.starter_code.trim()) {
+      setVerifyError(t('createProblem.verifyMissingFields'));
+      return;
+    }
+    setVerifying(true);
+    setVerifyError('');
+    setVerifyResults(null);
+    try {
+      const res = await fetchReferenceSolution({
+        description: draft.description,
+        starter_code: draft.starter_code,
+        helper_code: draft.helper_code,
+      });
+      if (!res.success || !res.code) {
+        setVerifyError(res.error || t('createProblem.verifyFailed'));
+        return;
+      }
+      setReferenceCode(res.code);
+
+      const results: VerifyResult[] = [];
+      for (let i = 0; i < draft.test_cases.length; i++) {
+        const tc = draft.test_cases[i];
+        const fullCode = `${res.code}\n${tc.input}`;
+        const r = await runPythonCode(fullCode, draft.helper_code || '');
+        if (r.error) {
+          results.push({ index: i, refOutput: '', matches: false, error: r.error });
+        } else {
+          const refOut = (r.stdout || '').trim();
+          results.push({ index: i, refOutput: refOut, matches: refOut === tc.expected.trim() });
+        }
+      }
+      setVerifyResults(results);
+    } catch (e) {
+      setVerifyError(e instanceof Error ? e.message : t('createProblem.verifyFailed'));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const acceptRefOutput = (index: number, refOutput: string) => {
+    updateTestCase(index, 'expected', refOutput);
+    setVerifyResults((prev) =>
+      prev ? prev.map((v) => (v.index === index ? { ...v, matches: true } : v)) : prev
+    );
   };
 
   const updateDraft = (field: keyof ProblemDraft, value: string) => {
@@ -112,6 +180,8 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
       tc[index] = { ...tc[index], [field]: value };
       return { ...d, test_cases: tc };
     });
+    // Editing a case invalidates its previous verification
+    setVerifyResults((prev) => (prev ? prev.filter((v) => v.index !== index) : prev));
   };
 
   const addTestCase = () => {
@@ -121,6 +191,7 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
   const removeTestCase = (index: number) => {
     if (draft.test_cases.length <= 1) return;
     setDraft((d) => ({ ...d, test_cases: d.test_cases.filter((_, i) => i !== index) }));
+    setVerifyResults(null);
   };
 
   const inputClasses =
@@ -288,48 +359,138 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
 
             {/* Test Cases */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2 gap-2">
                 <label className="text-sm text-gray-300">{t('createProblem.testCases')}</label>
-                <button
-                  onClick={addTestCase}
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                >
-                  {t('createProblem.addTestCase')}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleVerifyTestCases}
+                    disabled={verifying || !pyodideReady}
+                    title={!pyodideReady ? t('createProblem.verifyPyLoading') : t('createProblem.verifyHint')}
+                    className="text-xs px-2 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-amber-300 hover:bg-amber-900/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {verifying ? t('createProblem.verifying') : t('createProblem.verifyButton')}
+                  </button>
+                  <button
+                    onClick={addTestCase}
+                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                  >
+                    {t('createProblem.addTestCase')}
+                  </button>
+                </div>
               </div>
+              {verifyError && (
+                <div className="text-xs text-rose-400 mb-2">{verifyError}</div>
+              )}
+              {verifyResults && (() => {
+                const suspects = verifyResults.filter((v) => !v.matches);
+                const matched = verifyResults.length - suspects.length;
+                return (
+                  <div
+                    className={`text-xs px-3 py-2 rounded-xl border mb-2 ${
+                      suspects.length === 0
+                        ? 'border-emerald-600/30 bg-emerald-900/20 text-emerald-300'
+                        : 'border-amber-600/30 bg-amber-900/20 text-amber-300'
+                    }`}
+                  >
+                    {suspects.length === 0
+                      ? t('createProblem.verifyAllOk', { total: verifyResults.length })
+                      : t('createProblem.verifySuspects', { suspect: suspects.length, total: verifyResults.length, ok: matched })}
+                    {referenceCode && (
+                      <button
+                        onClick={() => setShowReference((s) => !s)}
+                        className="ml-2 underline text-violet-400 hover:text-violet-300"
+                      >
+                        {showReference ? t('createProblem.verifyHideRef') : t('createProblem.verifyShowRef')}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+              {showReference && referenceCode && (
+                <pre className="text-xs bg-gray-950/60 border border-white/[0.06] rounded-xl p-2 mb-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-gray-300">
+                  {referenceCode}
+                </pre>
+              )}
               <div className="space-y-3">
-                {draft.test_cases.map((tc, i) => (
-                  <div key={i} className="p-3 bg-gray-950/40 rounded-xl border border-white/[0.04] space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{t('createProblem.testCase', { num: i + 1 })}</span>
-                      {draft.test_cases.length > 1 && (
-                        <button
-                          onClick={() => removeTestCase(i)}
-                          className="text-xs text-rose-400/70 hover:text-rose-400 transition-colors"
-                        >
-                          {t('createProblem.deleteCase')}
-                        </button>
+                {draft.test_cases.map((tc, i) => {
+                  const verify = verifyResults?.find((v) => v.index === i);
+                  const isSuspect = verify && !verify.matches;
+                  return (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-xl border space-y-2 ${
+                        isSuspect
+                          ? 'bg-amber-900/10 border-amber-600/40'
+                          : verify
+                          ? 'bg-emerald-900/10 border-emerald-600/30'
+                          : 'bg-gray-950/40 border-white/[0.04]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 flex items-center gap-2">
+                          {t('createProblem.testCase', { num: i + 1 })}
+                          {verify && verify.matches && (
+                            <span className="text-emerald-400">✓</span>
+                          )}
+                          {isSuspect && (
+                            <span className="text-amber-400">⚠</span>
+                          )}
+                        </span>
+                        {draft.test_cases.length > 1 && (
+                          <button
+                            onClick={() => removeTestCase(i)}
+                            className="text-xs text-rose-400/70 hover:text-rose-400 transition-colors"
+                          >
+                            {t('createProblem.deleteCase')}
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-0.5">{t('createProblem.inputLabel')}</label>
+                        <textarea
+                          value={tc.input}
+                          onChange={(e) => updateTestCase(i, 'input', e.target.value)}
+                          rows={2}
+                          className={`${textareaClasses} text-xs`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-0.5">{t('createProblem.expectedLabel')}</label>
+                        <input
+                          value={tc.expected}
+                          onChange={(e) => updateTestCase(i, 'expected', e.target.value)}
+                          className={`${inputClasses} text-xs`}
+                        />
+                      </div>
+                      {isSuspect && (
+                        <div className="text-xs space-y-1 p-2 rounded-lg bg-amber-950/40 border border-amber-700/30">
+                          {verify.error ? (
+                            <>
+                              <div className="text-amber-300">{t('createProblem.verifyRefError')}</div>
+                              <pre className="bg-gray-950/40 rounded p-1.5 max-h-24 overflow-auto whitespace-pre-wrap text-rose-300">{verify.error}</pre>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-amber-300">
+                                {t('createProblem.verifyMismatch')}
+                              </div>
+                              <div className="text-gray-400">
+                                {t('createProblem.verifyRefOutput')}:{' '}
+                                <span className="font-mono text-emerald-300">{verify.refOutput}</span>
+                              </div>
+                              <button
+                                onClick={() => acceptRefOutput(i, verify.refOutput)}
+                                className="mt-1 text-[11px] px-2 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/40 transition-colors"
+                              >
+                                {t('createProblem.verifyAcceptRef')}
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-0.5">{t('createProblem.inputLabel')}</label>
-                      <textarea
-                        value={tc.input}
-                        onChange={(e) => updateTestCase(i, 'input', e.target.value)}
-                        rows={2}
-                        className={`${textareaClasses} text-xs`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-0.5">{t('createProblem.expectedLabel')}</label>
-                      <input
-                        value={tc.expected}
-                        onChange={(e) => updateTestCase(i, 'expected', e.target.value)}
-                        className={`${inputClasses} text-xs`}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -19,6 +19,7 @@ from ..services.ai_service import (
     get_teaching_sections,
     get_teaching_sections_for_difficulty,
     generate_problem_from_description,
+    generate_reference_solution,
 )
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -90,6 +91,12 @@ class TeachingSectionRequest(BaseModel):
 class GenerateProblemRequest(BaseModel):
     description: str = Field(max_length=5000)
     language: str = Field(default="zh-CN", max_length=10)
+
+
+class ReferenceSolutionRequest(BaseModel):
+    description: str = Field(max_length=50000)
+    starter_code: str = Field(max_length=10000)
+    helper_code: str = Field(default="", max_length=10000)
 
 
 # ─── Helper: build provider_config from authenticated user's DB record ───
@@ -213,6 +220,21 @@ async def generate_problem(request: GenerateProblemRequest, user: User = Depends
     provider_config = _require_provider_config(user, db)
     return await generate_problem_from_description(
         request.description, provider_config=provider_config, language=request.language,
+    )
+
+
+@router.post("/reference-solution")
+async def reference_solution(
+    request: ReferenceSolutionRequest,
+    user: User = Depends(rate_limit_ai),
+    db: Session = Depends(get_db),
+):
+    provider_config = _require_provider_config(user, db)
+    return await generate_reference_solution(
+        description=request.description,
+        starter_code=request.starter_code,
+        helper_code=request.helper_code,
+        provider_config=provider_config,
     )
 
 

@@ -14,9 +14,32 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
     isChatOpen, toggleChat,
     incrementFailures, resetFailures, triggerHintNudge,
     setErrorJumpTarget, markProblemSolved,
+    setIsChatOpen, setPendingChatPrompt, isAILoading,
   } = useStore();
 
   const [showPassed, setShowPassed] = useState(false);
+  const [expandedPassed, setExpandedPassed] = useState<Set<number>>(new Set());
+
+  const togglePassedDetail = (idx: number) => {
+    setExpandedPassed((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const disputeTestCase = (r: TestResult) => {
+    if (isAILoading) return;
+    const prompt = t('output.disputePrompt', {
+      num: r.index + 1,
+      input: r.input,
+      expected: r.expected,
+      actual: r.actual,
+    });
+    setIsChatOpen(true);
+    setPendingChatPrompt(prompt);
+  };
 
   const difficulty = currentProblem?.difficulty || 'Medium';
   const sectionTitles = useMemo(() => getSectionTitlesForDifficulty(difficulty), [difficulty]);
@@ -27,7 +50,6 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
   const handleRun = async () => {
     if (!pyodideReady || isRunning) return;
     setIsRunning(true);
-    setTestResults([]);
     setOutput('');
     const result = await runPythonCode(code, currentProblem?.helper_code || '');
     if (result.error) {
@@ -164,14 +186,32 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
                     key={r.index}
                     className="p-2 rounded-xl border border-rose-600/30 bg-rose-900/20"
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-rose-400">
                         {t('output.testFailed', { num: r.index + 1 })}
                       </span>
+                      <button
+                        onClick={() => disputeTestCase(r)}
+                        disabled={isAILoading}
+                        title={t('output.disputeHint')}
+                        className="ml-auto text-[10px] px-2 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-amber-300 hover:bg-amber-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {t('output.dispute')}
+                      </button>
                     </div>
-                    <div className="text-xs space-y-1 text-gray-400">
-                      <div>{t('output.expected')}: <span className="text-emerald-400">{r.expected}</span></div>
-                      <div>{t('output.actual')}: <span className="text-rose-400">{r.actual}</span></div>
+                    <div className="text-xs space-y-1.5 text-gray-400">
+                      <div>
+                        <div className="text-gray-500 mb-0.5">{t('output.input')}:</div>
+                        <pre className="bg-gray-950/40 border border-white/[0.04] rounded-lg px-2 py-1 max-h-32 overflow-auto text-gray-300 whitespace-pre-wrap">{r.input}</pre>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 mb-0.5">{t('output.expected')}:</div>
+                        <pre className="bg-gray-950/40 border border-emerald-600/20 rounded-lg px-2 py-1 max-h-32 overflow-auto text-emerald-300 whitespace-pre-wrap">{r.expected}</pre>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 mb-0.5">{t('output.actual')}:</div>
+                        <pre className="bg-gray-950/40 border border-rose-600/20 rounded-lg px-2 py-1 max-h-32 overflow-auto text-rose-300 whitespace-pre-wrap">{r.actual}</pre>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -194,16 +234,39 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
                 </button>
                 {showPassed && (
                   <div className="mt-2 space-y-1">
-                    {passedResults.map((r) => (
-                      <div
-                        key={r.index}
-                        className="p-2 rounded-lg border border-emerald-600/20 bg-emerald-900/10"
-                      >
-                        <span className="text-emerald-400 text-xs">
-                          {t('output.testPassed', { num: r.index + 1 })}
-                        </span>
-                      </div>
-                    ))}
+                    {passedResults.map((r) => {
+                      const isOpen = expandedPassed.has(r.index);
+                      return (
+                        <div
+                          key={r.index}
+                          className="rounded-lg border border-emerald-600/20 bg-emerald-900/10 overflow-hidden"
+                        >
+                          <button
+                            onClick={() => togglePassedDetail(r.index)}
+                            className="w-full p-2 flex items-center justify-between hover:bg-emerald-900/20 transition-colors text-left"
+                          >
+                            <span className="text-emerald-400 text-xs">
+                              {t('output.testPassed', { num: r.index + 1 })}
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                              {isOpen ? '▲' : '▼'}
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="px-2 pb-2 text-xs space-y-1 text-gray-400">
+                              <div>
+                                <div className="text-gray-500 mb-0.5">{t('output.input')}:</div>
+                                <pre className="bg-gray-950/40 border border-white/[0.04] rounded-lg px-2 py-1 max-h-32 overflow-auto text-gray-300 whitespace-pre-wrap">{r.input}</pre>
+                              </div>
+                              <div>
+                                <div className="text-gray-500 mb-0.5">{t('output.expected')}:</div>
+                                <pre className="bg-gray-950/40 border border-emerald-600/20 rounded-lg px-2 py-1 max-h-32 overflow-auto text-emerald-300 whitespace-pre-wrap">{r.expected}</pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

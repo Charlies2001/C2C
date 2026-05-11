@@ -37,6 +37,20 @@ export async function generateProblem(description: string): Promise<{
   return res.json();
 }
 
+export async function fetchReferenceSolution(payload: {
+  description: string;
+  starter_code: string;
+  helper_code: string;
+}): Promise<{ success: boolean; code?: string; error?: string }> {
+  const res = await authFetch(`${BASE_URL}/ai/reference-solution`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to fetch reference solution');
+  return res.json();
+}
+
 export async function deleteProblem(id: number): Promise<void> {
   const res = await authFetch(`${BASE_URL}/problems/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete problem');

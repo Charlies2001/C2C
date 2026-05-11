@@ -49,6 +49,8 @@ interface AppState {
   setIsChatOpen: (open: boolean) => void;
   isAILoading: boolean;
   setIsAILoading: (loading: boolean) => void;
+  pendingChatPrompt: string | null;
+  setPendingChatPrompt: (prompt: string | null) => void;
 
   // Pyodide
   pyodideReady: boolean;
@@ -324,6 +326,8 @@ export const useStore = create<AppState>((set, get) => ({
   setIsChatOpen: (open) => set({ isChatOpen: open }),
   isAILoading: false,
   setIsAILoading: (loading) => set({ isAILoading: loading }),
+  pendingChatPrompt: null,
+  setPendingChatPrompt: (prompt) => set({ pendingChatPrompt: prompt }),
 
   pyodideReady: false,
   setPyodideReady: (ready) => set({ pyodideReady: ready }),

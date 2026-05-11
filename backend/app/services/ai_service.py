@@ -802,6 +802,79 @@ Output a **strictly valid JSON object** with no markdown fences or extra text.
 Output JSON directly, first character {{, last character }}."""
 
 
+_REFERENCE_SOLUTION_PROMPT = """You are a coding expert. Given a problem description and a starter_code template, write a CORRECT, CLEAN reference solution in Python.
+
+## Output Format
+Output ONLY the complete Python code (no markdown fences, no commentary).
+The code must:
+1. Implement the same class/method signature as the starter_code (do NOT change the method name).
+2. Be self-contained — DO NOT import any packages.
+3. Be correct on all reasonable inputs (edge cases, large inputs, etc.).
+4. Use simple, clear logic.
+
+## Inputs
+You will be given:
+- Problem description
+- starter_code (the template students start from)
+- helper_code (any helper utilities, e.g. ListNode/TreeNode)
+
+Output the complete reference Solution class definition, replacing the `pass` with the real implementation.
+Do not include the helper_code in your output (it will be prepended automatically).
+Do not wrap output in ```python``` fences."""
+
+
+async def generate_reference_solution(
+    description: str,
+    starter_code: str,
+    helper_code: str = "",
+    provider_config: dict | None = None,
+) -> dict:
+    """Ask LLM to write a reference solution for a problem.
+
+    Returns {success: bool, code?: str, error?: str}. The frontend will run
+    this code via Pyodide against each test case to flag mismatched expected values.
+    """
+    cfg = _resolve_provider_config(provider_config)
+    if not cfg:
+        return {"success": False, "error": "未配置 API Key，请在设置中配置"}
+
+    user_msg_parts = [
+        f"## 题目描述\n{description}",
+        f"## starter_code\n```python\n{starter_code}\n```",
+    ]
+    if helper_code:
+        user_msg_parts.append(f"## helper_code\n```python\n{helper_code}\n```")
+    user_msg_parts.append("请输出完整的参考解（仅 Solution 类，不要带 markdown 围栏）。")
+
+    try:
+        raw = await _call_llm(
+            _REFERENCE_SOLUTION_PROMPT,
+            [{"role": "user", "content": "\n\n".join(user_msg_parts)}],
+            4096,
+            provider_config,
+        )
+
+        # Strip markdown fences if model included them anyway
+        code = raw.strip()
+        if code.startswith("```"):
+            # Remove first fence line and trailing fence
+            lines = code.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            code = "\n".join(lines).strip()
+
+        if "class Solution" not in code:
+            return {"success": False, "error": "AI 未返回有效的 Solution 类，请重试"}
+
+        return {"success": True, "code": code}
+    except (anthropic.APIError, openai.APIError) as e:
+        return {"success": False, "error": _format_llm_error(e)}
+    except Exception as e:
+        return {"success": False, "error": f"生成参考解时出错: {str(e)}"}
+
+
 async def generate_problem_from_description(user_description: str, provider_config: dict | None = None, language: str = "zh-CN") -> dict:
     """Call LLM to generate a complete problem structure from a short description."""
     cfg = _resolve_provider_config(provider_config)
@@ -942,24 +1015,23 @@ async def stream_ai_response(
 
     context_message = "\n\n".join(context_parts)
 
-    # Build messages
-    api_messages = []
-    if context_message:
-        api_messages.append({
-            "role": "user",
-            "content": f"[系统上下文 - 学生当前的做题情况]\n\n{context_message}\n\n---\n请基于以上上下文回答学生的问题。"
-        })
-        api_messages.append({
-            "role": "assistant",
-            "content": "好的，我已了解学生当前的做题情况，我会基于这些信息来引导他们。请问有什么问题？"
-        })
+    # Inject context immediately before the LATEST user message so the model
+    # always sees the freshest code/output/testResults, even after long chats.
+    last_user_idx = -1
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i]["role"] == "user":
+            last_user_idx = i
+            break
 
-    # Add conversation history
-    for msg in messages:
-        api_messages.append({
-            "role": msg["role"],
-            "content": msg["content"],
-        })
+    api_messages = []
+    for i, msg in enumerate(messages):
+        content = msg["content"]
+        if i == last_user_idx and context_message:
+            content = (
+                f"[学生当前的做题情况 - 实时快照]\n\n{context_message}\n\n"
+                f"---\n以下是学生的问题：\n{content}"
+            )
+        api_messages.append({"role": msg["role"], "content": content})
 
     system_prompt = SYSTEM_PROMPT + _build_user_profile_prompt(user_profile)
 
