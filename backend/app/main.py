@@ -11,6 +11,7 @@ from starlette.responses import JSONResponse
 from .config import settings
 from .database import engine, SessionLocal, Base
 from .logging_config import request_id_ctx, setup_logging
+from . import metrics
 from .models.problem import Problem
 from .models.user import User  # noqa: F401 — ensure table is created
 from .routers import ai, auth, notebooks, notes, problems, submissions
@@ -130,6 +131,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         rid_token = request_id_ctx.set(rid)
         start = time.perf_counter()
         status_code = 500
+        path = request.url.path
+        # Don't pollute metrics with the health/metrics scrapers themselves.
+        counted = path not in ("/api/health", "/api/metrics")
         try:
             response = await call_next(request)
             status_code = response.status_code
@@ -141,20 +145,26 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "request_error",
                 extra={
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": path,
                     "duration_ms": duration_ms,
                     "user_id": getattr(request.state, "user_id", None),
                 },
             )
             raise
         finally:
-            if request.url.path not in self._SKIP_PATHS:
+            if counted:
+                metrics.inc("requests_total")
+                if status_code >= 500:
+                    metrics.inc("responses_5xx")
+                elif status_code >= 400:
+                    metrics.inc("responses_4xx")
+            if path not in self._SKIP_PATHS:
                 duration_ms = round((time.perf_counter() - start) * 1000, 2)
                 logger.info(
                     "request",
                     extra={
                         "method": request.method,
-                        "path": request.url.path,
+                        "path": path,
                         "status": status_code,
                         "duration_ms": duration_ms,
                         "user_id": getattr(request.state, "user_id", None),
@@ -185,6 +195,13 @@ app.include_router(submissions.router)
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/metrics")
+def metrics_endpoint():
+    """Aggregate counters since process start. Designed for Uptime Kuma keyword monitors:
+    expect `"status":"ok"` in the body; fire alert if absent. See docs/DEPLOYMENT.md."""
+    return metrics.snapshot()
 
 
 # ─── Optional: serve a built React frontend (desktop / single-process mode) ───

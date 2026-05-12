@@ -78,6 +78,29 @@ services:
     networks:
       - codingbot
 
+  # Optional: lightweight uptime monitor. Reachable on host port 3010.
+  # Behind a separate reverse-proxy domain in production; default config
+  # binds it locally so SSH-tunnel access is enough.
+  # Configure monitors via Kuma UI (http://<host>:3010) — see docs/DEPLOYMENT.md.
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: codingbot-uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3010:3001"  # bind to loopback only — SSH-tunnel or reverse-proxy to access
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - codingbot
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
 networks:
   codingbot:
     driver: bridge
+
+volumes:
+  uptime-kuma-data:

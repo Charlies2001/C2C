@@ -236,7 +236,96 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 ---
 
-## 12. 常见故障
+## 12. 监控告警（Uptime Kuma + ntfy）
+
+`docker-compose.prod.yml` 已经内置可选的 **Uptime Kuma** 容器，加上 backend 暴露的 `/api/metrics` JSON 端点，可以做轻量监控告警，零成本。
+
+### 12.1 启动 Uptime Kuma
+
+Kuma 跟 backend / frontend 一起启动：
+```bash
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml ps  # 应该看到 codingbot-uptime-kuma running
+```
+
+Kuma 默认**只绑定 127.0.0.1:3010**（防止 dashboard 公网裸奔），通过 SSH 隧道访问：
+```bash
+ssh -L 3010:127.0.0.1:3010 user@your-server
+# 浏览器打开 http://localhost:3010
+```
+首次访问会要求创建管理员账号。
+
+### 12.2 三个核心 Monitor
+
+在 Kuma UI 里 **Add New Monitor**，建议至少配这三个：
+
+| Name | Type | 配置 |
+|---|---|---|
+| **CodingBot Health** | HTTP(s) | URL: `https://your-domain.com/api/health` · Interval 60s · 接受 status 200 |
+| **CodingBot Metrics** | HTTP(s) - Keyword | URL: `https://your-domain.com/api/metrics` · Keyword: `"status":"ok"` · Interval 60s |
+| **AI 失败率** | HTTP(s) - Keyword | URL: `https://your-domain.com/api/metrics` · Keyword (反向): `"ai_failure_ratio":0.` (>0.5 触发 — 详见下） · Interval 5m |
+
+> `/api/metrics` 输出累计计数器 + 几个比率字段。`"status":"ok"` 是恒定关键字，进程活着就有；如果 backend 真挂了，整个 HTTP 调用会失败 → Kuma 触发告警。
+
+**进阶（监控 AI 失败率）**：Kuma keyword 不支持数值阈值，可以反向匹配——预期 `ai_failure_ratio` 在 0.0-0.4 之间：用 keyword `"ai_failure_ratio":0.[0-4]`。失败率超过 0.5 时这个 keyword 不再匹配 → 告警。简单但够用。
+
+### 12.3 接入 ntfy 推送
+
+ntfy.sh 是开源消息推送，免费免账号 self-hosted 也方便。
+
+**最简方案（用公网 ntfy.sh）**：
+1. 随便起一个 topic 名字（足够长足够随机）：`codingbot-$(openssl rand -hex 8)`
+2. 手机装 ntfy app → Subscribe to topic
+3. Kuma 里 **Settings → Notifications → Setup Notification**：
+   - Type: `ntfy`
+   - Server URL: `https://ntfy.sh`
+   - Topic: 上一步的 topic 名
+   - Priority: `high`
+   - 测试发送 → 手机收到推送 = 接通
+4. 每个 Monitor 的 Settings 勾上这个 Notification
+
+**生产建议（self-hosted ntfy）**：把 topic 名当密码一样保护即可。如果想真隔离，可以自己跑一个 ntfy 服务：
+```bash
+docker run -d --name ntfy --restart unless-stopped \
+  -p 127.0.0.1:8011:80 \
+  -v /var/lib/ntfy:/var/cache/ntfy \
+  binwiederhier/ntfy serve --base-url http://localhost:8011
+```
+
+### 12.4 告警策略建议
+
+| 监控项 | 触发条件 | Severity | 行动 |
+|---|---|---|---|
+| Health | 连续 2 次 60s 失败 | Critical | 立即 SSH 上去看 `docker compose logs backend` |
+| Metrics keyword | 连续 2 次 60s 失败 | Critical | 同上 |
+| AI 失败率 | 5min 内匹配失败 | Warning | 看 `ai_calls_failed` 增量；可能是某个 provider Key 失效 |
+| Cert 到期 | Kuma 内置 SSL Cert monitor | Warning | certbot renew 失败警报 |
+
+⚠️ **不要把 5xx > 0 当告警**：测试请求、用户操作错误都会触发，会很吵。看 5xx **rate** 才有意义（用 ratio 字段或 Grafana 自己算）。
+
+### 12.5 metrics 端点字段
+
+```json
+{
+  "requests_total": 12345,
+  "responses_5xx": 3,
+  "responses_4xx": 87,
+  "ai_calls_total": 542,
+  "ai_calls_failed": 8,
+  "ai_cache_read_tokens": 230000,    // Anthropic prompt cache 节省的 input tokens
+  "ai_cache_write_tokens": 35000,
+  "uptime_seconds": 86400.0,
+  "ai_cache_hit_ratio": 0.868,       // read / (read + write)
+  "ai_failure_ratio": 0.014,
+  "status": "ok"
+}
+```
+
+> 计数器**每次重启清零**。需要长期保留就让 Kuma / Prometheus / Grafana 周期拉取并自己存储 delta。
+
+---
+
+## 13. 常见故障
 
 | 症状 | 可能原因 | 排查 |
 |------|----------|------|

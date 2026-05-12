@@ -110,15 +110,60 @@ def _resolve_provider_config(provider_config: dict | None) -> dict:
     raise MissingAPIKeyError("请在「设置」中配置 API Key 后再使用 AI 功能")
 
 
+def _build_anthropic_system(system_prompt: str, cacheable_prefix: str | None) -> str | list[dict]:
+    """Return system as a list of cacheable blocks when a static prefix is given.
+
+    The cache_control marker on the LAST block extends caching to all blocks up to
+    and including it (system_prompt + cacheable_prefix), so subsequent calls with
+    the same combo cost ~10% of normal input tokens.
+    """
+    if not cacheable_prefix:
+        return system_prompt
+    return [
+        {"type": "text", "text": system_prompt},
+        {"type": "text", "text": cacheable_prefix, "cache_control": {"type": "ephemeral"}},
+    ]
+
+
+def _prepend_to_first_user(messages: list[dict], prefix: str) -> list[dict]:
+    """Prepend `prefix` to the first user message's content (OpenAI path).
+
+    OpenAI-style providers cache long stable prefixes automatically (gpt-4o family,
+    1024+ token threshold), so we just make sure the static problem context sits
+    at the very front of the conversation.
+    """
+    if not prefix or not messages:
+        return messages
+    out = []
+    prepended = False
+    for msg in messages:
+        if not prepended and msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                out.append({**msg, "content": f"{prefix}\n\n{content}"})
+            else:
+                out.append(msg)
+            prepended = True
+        else:
+            out.append(msg)
+    return out
+
+
 async def _stream_llm_response(
     system_prompt: str,
     messages: list[dict],
     max_tokens: int,
     provider_config: dict | None = None,
+    cacheable_prefix: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Unified streaming LLM call. Yields plain text tokens.
 
     Raises MissingAPIKeyError if no key is configured.
+
+    `cacheable_prefix` is a stable text block (e.g. problem description + starter_code)
+    that doesn't change across follow-up requests within ~5 min. Anthropic path uses
+    explicit prompt caching; OpenAI-compatible paths prepend it to the first user
+    message so their automatic prefix caching can pick it up.
     """
     cfg = _resolve_provider_config(provider_config)
 
@@ -128,6 +173,8 @@ async def _stream_llm_response(
     start = time.perf_counter()
     chars = 0
     error: str | None = None
+    cache_read = 0
+    cache_write = 0
     try:
         if provider == "anthropic":
             client = _get_anthropic_client(api_key)
@@ -135,32 +182,53 @@ async def _stream_llm_response(
                 async with client.messages.stream(
                     model=model,
                     max_tokens=max_tokens,
-                    system=system_prompt,
+                    system=_build_anthropic_system(system_prompt, cacheable_prefix),
                     messages=messages,
                 ) as stream:
                     async for text in stream.text_stream:
                         chars += len(text)
                         yield text
+                    final = await stream.get_final_message()
+                    usage = getattr(final, "usage", None)
+                    if usage is not None:
+                        cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+                        cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
         else:
             base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
             client = _get_openai_client(api_key, base_url)
-            oai_messages = [{"role": "system", "content": system_prompt}] + messages
+            messages_with_prefix = _prepend_to_first_user(messages, cacheable_prefix) if cacheable_prefix else messages
+            oai_messages = [{"role": "system", "content": system_prompt}] + messages_with_prefix
             async with asyncio.timeout(LLM_STREAM_TIMEOUT):
                 stream = await client.chat.completions.create(
                     model=model,
                     max_tokens=max_tokens,
                     messages=oai_messages,
                     stream=True,
+                    stream_options={"include_usage": True},
                 )
                 async for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
                     if delta and delta.content:
                         chars += len(delta.content)
                         yield delta.content
+                    # OpenAI surfaces cached prompt tokens in the final usage chunk.
+                    usage = getattr(chunk, "usage", None)
+                    if usage is not None:
+                        prompt_details = getattr(usage, "prompt_tokens_details", None)
+                        if prompt_details is not None:
+                            cache_read = getattr(prompt_details, "cached_tokens", 0) or 0
     except Exception as e:
         error = type(e).__name__
         raise
     finally:
+        from .. import metrics as _metrics
+        _metrics.inc("ai_calls_total")
+        if error is not None:
+            _metrics.inc("ai_calls_failed")
+        if cache_read:
+            _metrics.inc("ai_cache_read_tokens", cache_read)
+        if cache_write:
+            _metrics.inc("ai_cache_write_tokens", cache_write)
         logger.info(
             "llm_stream",
             extra={
@@ -169,6 +237,8 @@ async def _stream_llm_response(
                 "max_tokens": max_tokens,
                 "duration_ms": round((time.perf_counter() - start) * 1000, 2),
                 "output_chars": chars,
+                "cache_read_tokens": cache_read,
+                "cache_write_tokens": cache_write,
                 "error": error,
             },
         )
@@ -179,10 +249,12 @@ async def _call_llm(
     messages: list[dict],
     max_tokens: int,
     provider_config: dict | None = None,
+    cacheable_prefix: str | None = None,
 ) -> str:
     """Unified non-streaming LLM call. Returns full text.
 
     Raises MissingAPIKeyError if no key is configured.
+    See _stream_llm_response docstring for `cacheable_prefix` semantics.
     """
     cfg = _resolve_provider_config(provider_config)
 
@@ -192,6 +264,8 @@ async def _call_llm(
     start = time.perf_counter()
     result = ""
     error: str | None = None
+    cache_read = 0
+    cache_write = 0
     try:
         if provider == "anthropic":
             client = _get_anthropic_client(api_key)
@@ -199,14 +273,19 @@ async def _call_llm(
                 response = await client.messages.create(
                     model=model,
                     max_tokens=max_tokens,
-                    system=system_prompt,
+                    system=_build_anthropic_system(system_prompt, cacheable_prefix),
                     messages=messages,
                 )
             result = response.content[0].text.strip()
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+                cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
         else:
             base_url = PROVIDER_REGISTRY.get(provider, {}).get("base_url", "https://api.openai.com/v1")
             client = _get_openai_client(api_key, base_url)
-            oai_messages = [{"role": "system", "content": system_prompt}] + messages
+            messages_with_prefix = _prepend_to_first_user(messages, cacheable_prefix) if cacheable_prefix else messages
+            oai_messages = [{"role": "system", "content": system_prompt}] + messages_with_prefix
             async with asyncio.timeout(LLM_CALL_TIMEOUT):
                 response = await client.chat.completions.create(
                     model=model,
@@ -214,11 +293,24 @@ async def _call_llm(
                     messages=oai_messages,
                 )
             result = response.choices[0].message.content.strip()
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                prompt_details = getattr(usage, "prompt_tokens_details", None)
+                if prompt_details is not None:
+                    cache_read = getattr(prompt_details, "cached_tokens", 0) or 0
         return result
     except Exception as e:
         error = type(e).__name__
         raise
     finally:
+        from .. import metrics as _metrics
+        _metrics.inc("ai_calls_total")
+        if error is not None:
+            _metrics.inc("ai_calls_failed")
+        if cache_read:
+            _metrics.inc("ai_cache_read_tokens", cache_read)
+        if cache_write:
+            _metrics.inc("ai_cache_write_tokens", cache_write)
         logger.info(
             "llm_call",
             extra={
@@ -227,6 +319,8 @@ async def _call_llm(
                 "max_tokens": max_tokens,
                 "duration_ms": round((time.perf_counter() - start) * 1000, 2),
                 "output_chars": len(result),
+                "cache_read_tokens": cache_read,
+                "cache_write_tokens": cache_write,
                 "error": error,
             },
         )
@@ -689,17 +783,22 @@ async def stream_teaching_section(
     max_tokens = section.get("max_tokens", 2048)
     section_system = section["prompt"] + _build_user_profile_prompt(user_profile)
 
-    parts = _build_problem_parts(problem_context)
-    if problem_context.get("starterCode"):
-        parts.append(f"## 题目初始代码\n```python\n{problem_context['starterCode']}\n```")
+    # Static prefix (title + description + starter_code): same across all sections,
+    # so within one teaching session calls 2-N will hit the prompt cache.
+    static = _build_problem_static_parts(problem_context)
+    cacheable_prefix = "\n\n".join(static) if static else None
 
-    # Item 1: Add prior context for continuity
+    # Dynamic tail: prior sections content (grows as more sections are generated).
+    dynamic = _build_problem_dynamic_parts(problem_context)
     if previous_sections:
         prior = _build_prior_context(previous_sections)
         if prior:
-            parts.append(prior)
+            dynamic.append(prior)
 
-    user_message = "\n\n".join(parts) + f"\n\n请针对以上题目，生成「{section['title']}」章节的教学内容。"
+    user_message = (
+        ("\n\n".join(dynamic) + "\n\n" if dynamic else "")
+        + f"请针对以上题目，生成「{section['title']}」章节的教学内容。"
+    )
 
     try:
         async for text in _stream_llm_response(
@@ -707,6 +806,7 @@ async def stream_teaching_section(
             [{"role": "user", "content": user_message}],
             max_tokens,
             provider_config,
+            cacheable_prefix=cacheable_prefix,
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
@@ -1000,22 +1100,25 @@ async def stream_ai_response(
         yield "data: [DONE]\n\n"
         return
 
-    # Build context message
-    context_parts = []
+    # Static prefix (cacheable across follow-ups within 5min): title + description.
+    static_parts = []
     if problem_context.get("title"):
-        context_parts.append(f"## 当前题目: {problem_context['title']}")
+        static_parts.append(f"## 当前题目: {problem_context['title']}")
     if problem_context.get("description"):
-        context_parts.append(f"## 题目描述\n{problem_context['description']}")
+        static_parts.append(f"## 题目描述\n{problem_context['description']}")
+    cacheable_prefix = "\n\n".join(static_parts) if static_parts else None
+
+    # Dynamic context (changes every call): code + output + test results.
+    dynamic_parts = []
     if problem_context.get("code"):
-        context_parts.append(f"## 学生当前代码\n```python\n{problem_context['code']}\n```")
+        dynamic_parts.append(f"## 学生当前代码\n```python\n{problem_context['code']}\n```")
     if problem_context.get("output"):
-        context_parts.append(f"## 代码执行输出\n```\n{problem_context['output']}\n```")
+        dynamic_parts.append(f"## 代码执行输出\n```\n{problem_context['output']}\n```")
     if problem_context.get("testResults"):
-        context_parts.append(f"## 测试结果\n{problem_context['testResults']}")
+        dynamic_parts.append(f"## 测试结果\n{problem_context['testResults']}")
+    dynamic_context = "\n\n".join(dynamic_parts)
 
-    context_message = "\n\n".join(context_parts)
-
-    # Inject context immediately before the LATEST user message so the model
+    # Inject DYNAMIC context immediately before the LATEST user message so the model
     # always sees the freshest code/output/testResults, even after long chats.
     last_user_idx = -1
     for i in range(len(messages) - 1, -1, -1):
@@ -1026,9 +1129,9 @@ async def stream_ai_response(
     api_messages = []
     for i, msg in enumerate(messages):
         content = msg["content"]
-        if i == last_user_idx and context_message:
+        if i == last_user_idx and dynamic_context:
             content = (
-                f"[学生当前的做题情况 - 实时快照]\n\n{context_message}\n\n"
+                f"[学生当前的做题情况 - 实时快照]\n\n{dynamic_context}\n\n"
                 f"---\n以下是学生的问题：\n{content}"
             )
         api_messages.append({"role": msg["role"], "content": content})
@@ -1041,6 +1144,7 @@ async def stream_ai_response(
             api_messages,
             2048,
             provider_config,
+            cacheable_prefix=cacheable_prefix,
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
@@ -1054,18 +1158,31 @@ async def stream_ai_response(
         return
 
 
-def _build_problem_parts(problem_context: dict) -> list[str]:
-    """Build context parts from problem_context dict."""
+def _build_problem_static_parts(problem_context: dict) -> list[str]:
+    """Parts that don't change within a problem session — safe for prompt caching."""
     parts = []
     if problem_context.get("title"):
         parts.append(f"## 题目: {problem_context['title']}")
     if problem_context.get("description"):
         parts.append(f"## 题目描述\n{problem_context['description']}")
+    if problem_context.get("starterCode"):
+        parts.append(f"## 题目初始代码\n```python\n{problem_context['starterCode']}\n```")
+    return parts
+
+
+def _build_problem_dynamic_parts(problem_context: dict) -> list[str]:
+    """Parts that change every call (student code, output, test results)."""
+    parts = []
     if problem_context.get("code"):
         parts.append(f"## 学生当前代码\n```python\n{problem_context['code']}\n```")
     if problem_context.get("output"):
         parts.append(f"## 最近输出\n```\n{problem_context['output']}\n```")
     return parts
+
+
+def _build_problem_parts(problem_context: dict) -> list[str]:
+    """Legacy combined helper, kept for back-compat with callers that don't use caching."""
+    return _build_problem_static_parts(problem_context) + _build_problem_dynamic_parts(problem_context)
 
 
 async def _determine_hint_level(
@@ -1123,9 +1240,13 @@ async def stream_hint_response(
     # Send determined level as first SSE event
     yield f"data: {json.dumps({'level': hint_level}, ensure_ascii=False)}\n\n"
 
-    # Build user message for hint generation
+    # Static prefix for cache (title + description + starter): same across hint requests on this problem.
+    static = _build_problem_static_parts(problem_context)
+    cacheable_prefix = "\n\n".join(static) if static else None
+
+    # Dynamic body: instruction + student's current code/output + previous hints
     parts = [f"请生成**{level_name}**（级别 {hint_level}）的提示。\n"]
-    parts.extend(_build_problem_parts(problem_context))
+    parts.extend(_build_problem_dynamic_parts(problem_context))
 
     if previous_hints:
         parts.append("## 之前已给的提示（请递进，不要重复）")
@@ -1143,6 +1264,7 @@ async def stream_hint_response(
             [{"role": "user", "content": user_message}],
             1024,
             provider_config,
+            cacheable_prefix=cacheable_prefix,
         ):
             yield f"data: {json.dumps({'content': text}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
