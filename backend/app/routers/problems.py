@@ -1,15 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 
 from ..database import get_db
 from ..models.problem import Problem
+from ..models.test_case_fix import TestCaseFix
 from ..models.user import User
 from ..schemas.problem import ProblemCreate, ProblemUpdate, ProblemResponse, ProblemListItem
 from ..auth import get_current_user
 
 router = APIRouter(prefix="/api/problems", tags=["problems"])
+
+
+class TestCaseFixRequest(BaseModel):
+    index: int = Field(ge=0)
+    expected: str = Field(max_length=20000)
 
 @router.get("/", response_model=list[ProblemListItem])
 def list_problems(
@@ -62,3 +70,38 @@ def delete_problem(problem_id: int, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=404, detail="Problem not found")
     db.delete(db_problem)
     db.commit()
+
+
+@router.patch("/{problem_id}/test-cases", response_model=ProblemResponse)
+def fix_test_case(
+    problem_id: int,
+    req: TestCaseFixRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Patch a single test_case's `expected` value. Audit-logged in test_case_fixes."""
+    db_problem = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not db_problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    cases = list(db_problem.test_cases or [])
+    if req.index >= len(cases):
+        raise HTTPException(status_code=400, detail="test case index 越界")
+    old_expected = cases[req.index].get("expected", "")
+    if old_expected == req.expected:
+        # no-op; don't pollute audit
+        return db_problem
+    cases[req.index] = {**cases[req.index], "expected": req.expected}
+    db_problem.test_cases = cases
+    flag_modified(db_problem, "test_cases")
+    db.add(
+        TestCaseFix(
+            user_id=user.id,
+            problem_id=problem_id,
+            case_index=req.index,
+            old_expected=old_expected,
+            new_expected=req.expected,
+        )
+    )
+    db.commit()
+    db.refresh(db_problem)
+    return db_problem

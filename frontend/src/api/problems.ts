@@ -56,6 +56,23 @@ export async function deleteProblem(id: number): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete problem');
 }
 
+export async function fixTestCase(payload: {
+  problem_id: number;
+  index: number;
+  expected: string;
+}): Promise<Problem> {
+  const res = await authFetch(`${BASE_URL}/problems/${payload.problem_id}/test-cases`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index: payload.index, expected: payload.expected }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Failed to fix test case');
+  }
+  return res.json();
+}
+
 export async function createProblem(problem: Omit<Problem, 'id'>): Promise<Problem> {
   const res = await authFetch(`${BASE_URL}/problems/`, {
     method: 'POST',
