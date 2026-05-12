@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
 import { streamHint } from '../../api/ai';
 
@@ -28,7 +29,34 @@ export default function HintPanel() {
     hints, showHintNudge, isHintLoading,
     dismissHintNudge, addHint, updateLastHint, setLastHintLevel, setIsHintLoading,
     currentProblem, code, output, hasAllLevels, clearHints, saveHints,
-  } = useStore();
+  } = useStore(
+    useShallow((s) => ({
+      hints: s.hints,
+      showHintNudge: s.showHintNudge,
+      isHintLoading: s.isHintLoading,
+      dismissHintNudge: s.dismissHintNudge,
+      addHint: s.addHint,
+      updateLastHint: s.updateLastHint,
+      setLastHintLevel: s.setLastHintLevel,
+      setIsHintLoading: s.setIsHintLoading,
+      currentProblem: s.currentProblem,
+      code: s.code,
+      output: s.output,
+      hasAllLevels: s.hasAllLevels,
+      clearHints: s.clearHints,
+      saveHints: s.saveHints,
+    }))
+  );
+
+  // Abort in-flight hint request when switching problems or unmounting,
+  // so old chunks don't leak into a new problem's hints list.
+  const hintAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      hintAbortRef.current?.abort();
+      hintAbortRef.current = null;
+    };
+  }, [currentProblem?.id]);
 
   const allLevelsCovered = hasAllLevels();
 
@@ -51,6 +79,9 @@ export default function HintPanel() {
       .filter((h) => h.content)
       .map((h) => ({ level: h.level, content: h.content }));
 
+    hintAbortRef.current?.abort();
+    hintAbortRef.current = new AbortController();
+
     let accumulated = '';
     streamHint(
       problemContext,
@@ -69,7 +100,8 @@ export default function HintPanel() {
       (error) => {
         updateLastHint(`${t('hint.error')}: ${error}`);
         setIsHintLoading(false);
-      }
+      },
+      hintAbortRef.current.signal,
     );
   }, [currentProblem, isHintLoading, allLevelsCovered, hints, code, output,
       dismissHintNudge, setIsHintLoading, addHint, updateLastHint, setLastHintLevel, saveHints, t]);

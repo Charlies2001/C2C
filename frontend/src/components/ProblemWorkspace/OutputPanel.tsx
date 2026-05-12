@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
 import { runPythonCode } from '../../services/pyodide';
 import type { TestResult } from '../../types/problem';
@@ -15,7 +16,31 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
     incrementFailures, resetFailures, triggerHintNudge,
     setErrorJumpTarget, markProblemSolved,
     setIsChatOpen, setPendingChatPrompt, isAILoading,
-  } = useStore();
+    recordSubmission,
+  } = useStore(
+    useShallow((s) => ({
+      code: s.code,
+      output: s.output,
+      setOutput: s.setOutput,
+      isRunning: s.isRunning,
+      setIsRunning: s.setIsRunning,
+      currentProblem: s.currentProblem,
+      testResults: s.testResults,
+      setTestResults: s.setTestResults,
+      pyodideReady: s.pyodideReady,
+      isChatOpen: s.isChatOpen,
+      toggleChat: s.toggleChat,
+      incrementFailures: s.incrementFailures,
+      resetFailures: s.resetFailures,
+      triggerHintNudge: s.triggerHintNudge,
+      setErrorJumpTarget: s.setErrorJumpTarget,
+      markProblemSolved: s.markProblemSolved,
+      setIsChatOpen: s.setIsChatOpen,
+      setPendingChatPrompt: s.setPendingChatPrompt,
+      isAILoading: s.isAILoading,
+      recordSubmission: s.recordSubmission,
+    }))
+  );
 
   const [showPassed, setShowPassed] = useState(false);
   const [expandedPassed, setExpandedPassed] = useState<Set<number>>(new Set());
@@ -89,6 +114,9 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
     setTestResults(results);
     const passed = results.filter((r) => r.passed).length;
     setOutput(t('output.testResult', { passed, total: results.length }));
+    // Persist this submission to the server (per-problem history).
+    // Fire-and-forget — failure is silently swallowed in the store action.
+    void recordSubmission(currentProblem.id, passed, results.length);
     if (passed === results.length) {
       resetFailures();
       if (currentProblem) {

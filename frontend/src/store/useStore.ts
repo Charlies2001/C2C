@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Problem, ProblemListItem, TestResult, ChatMessage, Collection, UserProfile, SolvedRecord } from '../types/problem';
 import { getTreeStageInfo } from '../components/GrowthTree/treeUtils';
+import { createSubmission, listSubmissions, type SubmissionRecord } from '../api/submissions';
 
 interface TeachingSection {
   title: string;
@@ -125,6 +126,12 @@ interface AppState {
   loadTreeProgress: () => void;
   markProblemSolved: (problemId: number, title: string, difficulty: 'Easy' | 'Medium' | 'Hard') => void;
   dismissTreeGrowth: () => void;
+
+  // Submission history (per-problem, server-persisted)
+  submissionsByProblem: Record<number, SubmissionRecord[]>;
+  isSubmissionsLoading: boolean;
+  loadSubmissionsForProblem: (problemId: number) => Promise<void>;
+  recordSubmission: (problemId: number, passedCount: number, totalCount: number) => Promise<void>;
 }
 
 // Limit chat history to prevent unbounded memory/localStorage growth
@@ -175,7 +182,29 @@ function loadChatFromStorage(problemId: number): ChatMessage[] {
 
 function saveTeachingToStorage(problemId: number, sections: TeachingSection[], difficulty: string) {
   const data: TeachingStorage = { version: 2, difficulty, sections };
-  localStorage.setItem(`teaching_${problemId}`, JSON.stringify(data));
+  const serialized = JSON.stringify(data);
+  try {
+    localStorage.setItem(`teaching_${problemId}`, serialized);
+  } catch {
+    // Likely QuotaExceededError — drop oldest half of teaching entries and retry once.
+    _cleanupOldTeachingStorage(problemId);
+    try {
+      localStorage.setItem(`teaching_${problemId}`, serialized);
+    } catch {
+      // Still failing — silently drop. Teaching content is regeneratable on demand.
+    }
+  }
+}
+
+function _cleanupOldTeachingStorage(keepProblemId: number) {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('teaching_') && key !== `teaching_${keepProblemId}`) keys.push(key);
+  }
+  // Remove oldest half (key order is roughly insertion order in most browsers).
+  const toRemove = keys.slice(0, Math.ceil(keys.length / 2));
+  toRemove.forEach((key) => localStorage.removeItem(key));
 }
 
 function loadTeachingFromStorage(problemId: number): { sections: TeachingSection[]; difficulty: string } {
@@ -551,4 +580,65 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
   dismissTreeGrowth: () => set({ treeJustGrew: false }),
+
+  // Submissions
+  submissionsByProblem: {},
+  isSubmissionsLoading: false,
+  loadSubmissionsForProblem: async (problemId) => {
+    set({ isSubmissionsLoading: true });
+    try {
+      const rows = await listSubmissions(problemId, 50);
+      set((state) => ({
+        submissionsByProblem: { ...state.submissionsByProblem, [problemId]: rows },
+      }));
+    } catch {
+      // Network/auth error — keep cache as-is. Don't surface to UI; user just won't see history.
+    } finally {
+      set({ isSubmissionsLoading: false });
+    }
+  },
+  recordSubmission: async (problemId, passedCount, totalCount) => {
+    // Optimistic prepend so the UI updates immediately; replace with server row on success.
+    const optimistic: SubmissionRecord = {
+      id: -Date.now(), // negative sentinel until server assigns real id
+      problem_id: problemId,
+      passed_count: passedCount,
+      total_count: totalCount,
+      all_passed: passedCount === totalCount,
+      submitted_at: new Date().toISOString(),
+    };
+    set((state) => ({
+      submissionsByProblem: {
+        ...state.submissionsByProblem,
+        [problemId]: [optimistic, ...(state.submissionsByProblem[problemId] || [])],
+      },
+    }));
+    try {
+      const saved = await createSubmission({
+        problem_id: problemId,
+        passed_count: passedCount,
+        total_count: totalCount,
+      });
+      set((state) => {
+        const list = state.submissionsByProblem[problemId] || [];
+        return {
+          submissionsByProblem: {
+            ...state.submissionsByProblem,
+            [problemId]: list.map((s) => (s.id === optimistic.id ? saved : s)),
+          },
+        };
+      });
+    } catch {
+      // Roll back the optimistic entry on failure.
+      set((state) => {
+        const list = state.submissionsByProblem[problemId] || [];
+        return {
+          submissionsByProblem: {
+            ...state.submissionsByProblem,
+            [problemId]: list.filter((s) => s.id !== optimistic.id),
+          },
+        };
+      });
+    }
+  },
 }));

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import HintPanel from './HintPanel';
 import NotePanel from './NotePanel';
+import SubmissionsPanel from './SubmissionsPanel';
 import BookmarkButton from '../BookmarkButton';
 
 const difficultyColors: Record<string, string> = {
@@ -51,6 +52,7 @@ export default function ProblemDescription() {
           <ReactMarkdown>{problem.description}</ReactMarkdown>
         </div>
         <NotePanel problemId={problem.id} />
+        <SubmissionsPanel problemId={problem.id} />
         <HintPanel />
       </div>
     </div>

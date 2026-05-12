@@ -2,7 +2,8 @@ import Editor from '@monaco-editor/react';
 import { useStore } from '../../store/useStore';
 
 export default function CodeEditor() {
-  const { code, setCode } = useStore();
+  const code = useStore((s) => s.code);
+  const setCode = useStore((s) => s.setCode);
 
   return (
     <div className="h-full">

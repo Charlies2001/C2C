@@ -13,7 +13,7 @@ from .database import engine, SessionLocal, Base
 from .logging_config import request_id_ctx, setup_logging
 from .models.problem import Problem
 from .models.user import User  # noqa: F401 — ensure table is created
-from .routers import ai, auth, notebooks, notes, problems
+from .routers import ai, auth, notebooks, notes, problems, submissions
 from .seed.problems import SEED_PROBLEMS
 from .services.ai_service import _anthropic_clients, _openai_clients
 
@@ -180,6 +180,7 @@ app.include_router(problems.router)
 app.include_router(ai.router)
 app.include_router(notes.router)
 app.include_router(notebooks.router)
+app.include_router(submissions.router)
 
 @app.get("/api/health")
 def health_check():

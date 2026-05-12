@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
 import { streamAIChat } from '../../api/ai';
 
@@ -42,7 +43,26 @@ export default function AIChatPanel() {
     updateLastAssistantMessage, isAILoading, setIsAILoading,
     saveChatMessages, clearChat, chatProblemId, currentProblem, code, output, testResults,
     pendingChatPrompt, setPendingChatPrompt,
-  } = useStore();
+  } = useStore(
+    useShallow((s) => ({
+      isChatOpen: s.isChatOpen,
+      setIsChatOpen: s.setIsChatOpen,
+      chatMessages: s.chatMessages,
+      addChatMessage: s.addChatMessage,
+      updateLastAssistantMessage: s.updateLastAssistantMessage,
+      isAILoading: s.isAILoading,
+      setIsAILoading: s.setIsAILoading,
+      saveChatMessages: s.saveChatMessages,
+      clearChat: s.clearChat,
+      chatProblemId: s.chatProblemId,
+      currentProblem: s.currentProblem,
+      code: s.code,
+      output: s.output,
+      testResults: s.testResults,
+      pendingChatPrompt: s.pendingChatPrompt,
+      setPendingChatPrompt: s.setPendingChatPrompt,
+    }))
+  );
   const [input, setInput] = useState('');
   const [panelWidth, setPanelWidth] = useState<number>(loadInitialWidth);
   const messagesEndRef = useRef<HTMLDivElement>(null);

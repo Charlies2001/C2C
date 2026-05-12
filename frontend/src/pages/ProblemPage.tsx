@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Panel, Group, Separator } from 'react-resizable-panels';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../store/useStore';
 import { fetchProblem } from '../api/problems';
 import { usePyodide } from '../hooks/usePyodide';
@@ -16,9 +17,22 @@ export default function ProblemPage() {
   const [mode, setMode] = useState<'coding' | 'teaching'>('coding');
   const {
     setCurrentProblem, setCode, setOutput, setTestResults,
-    loadChatForProblem, loadHintsForProblem, loadTeachingForProblem,
+    loadChatForProblem, loadHintsForProblem, loadTeachingForProblem, loadSubmissionsForProblem,
     isChatOpen, setIsChatOpen,
-  } = useStore();
+  } = useStore(
+    useShallow((s) => ({
+      setCurrentProblem: s.setCurrentProblem,
+      setCode: s.setCode,
+      setOutput: s.setOutput,
+      setTestResults: s.setTestResults,
+      loadChatForProblem: s.loadChatForProblem,
+      loadHintsForProblem: s.loadHintsForProblem,
+      loadTeachingForProblem: s.loadTeachingForProblem,
+      loadSubmissionsForProblem: s.loadSubmissionsForProblem,
+      isChatOpen: s.isChatOpen,
+      setIsChatOpen: s.setIsChatOpen,
+    }))
+  );
 
   usePyodide();
   useHintTrigger(mode);
@@ -33,6 +47,7 @@ export default function ProblemPage() {
     loadChatForProblem(problemId);
     loadHintsForProblem(problemId);
     loadTeachingForProblem(problemId);
+    loadSubmissionsForProblem(problemId);
     fetchProblem(problemId).then((p) => {
       if (!ignore) {
         setCurrentProblem(p);
@@ -43,7 +58,7 @@ export default function ProblemPage() {
       ignore = true;
       setCurrentProblem(null);
     };
-  }, [id, setCurrentProblem, setCode, setOutput, setTestResults, loadChatForProblem, loadHintsForProblem, loadTeachingForProblem]);
+  }, [id, setCurrentProblem, setCode, setOutput, setTestResults, loadChatForProblem, loadHintsForProblem, loadTeachingForProblem, loadSubmissionsForProblem]);
 
   // Keyboard shortcuts
   useEffect(() => {

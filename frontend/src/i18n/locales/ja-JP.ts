@@ -75,6 +75,15 @@ const jaJP = {
     done: '完了',
   },
 
+  submissions: {
+    title: '提出履歴',
+    acceptedShort: '合格',
+    accepted: '全テスト合格',
+    partial: '一部合格',
+    failedRow: '{{passed}}/{{total}} 合格',
+    loading: '読み込み中...',
+  },
+
   chat: {
     title: 'AI チューター',
     clearHistory: '履歴を消去',

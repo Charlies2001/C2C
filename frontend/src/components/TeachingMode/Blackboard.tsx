@@ -170,6 +170,8 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
   const [generatingIndex, setGeneratingIndex] = useState(-1);
   const accRef = useRef('');
   const doneIndexRef = useRef(0);
+  const [streamingPreview, setStreamingPreview] = useState('');
+  const previewTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapsible sections
   const [collapsedMap, setCollapsedMap] = useState<Record<number, boolean>>({});
@@ -217,6 +219,7 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
       abortRef.current = abort;
 
       accRef.current = '';
+      setStreamingPreview('');
       setGeneratingIndex(index);
       setIsTeachingLoading(true);
       setCurrentSection(index);
@@ -229,16 +232,34 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
         index,
         (chunk) => {
           accRef.current += chunk;
+          // Throttled UI update (~5fps) so user sees streaming progress
+          // without re-rendering the heavy markdown tree on every chunk.
+          if (!previewTickRef.current) {
+            previewTickRef.current = setTimeout(() => {
+              previewTickRef.current = null;
+              setStreamingPreview(accRef.current);
+            }, 200);
+          }
         },
         () => {
+          if (previewTickRef.current) {
+            clearTimeout(previewTickRef.current);
+            previewTickRef.current = null;
+          }
           useStore.getState().updateSectionContent(doneIndexRef.current, accRef.current);
+          setStreamingPreview('');
           setGeneratingIndex(-1);
           useStore.getState().setIsTeachingLoading(false);
           useStore.getState().saveTeaching();
         },
         (error) => {
+          if (previewTickRef.current) {
+            clearTimeout(previewTickRef.current);
+            previewTickRef.current = null;
+          }
           useStore.getState().updateSectionContent(index, accRef.current);
           console.error(`Teaching section ${index} error:`, error);
+          setStreamingPreview('');
           setGeneratingIndex(-1);
           useStore.getState().setIsTeachingLoading(false);
         },
@@ -456,7 +477,23 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
                     {activeSection.title === 'practice' ? (
                       <GuidedCoding content={displayContent} isStreaming={isCurrentStreaming} />
                     ) : isCurrentStreaming ? (
-                      <GeneratingWaitScreen title={getSectionDisplayTitle(activeSection.title)} />
+                      streamingPreview ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="inline-block w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                            {t('blackboard.generatingChapter', {
+                              current: currentSection + 1,
+                              total: totalSections,
+                              title: getSectionDisplayTitle(activeSection.title),
+                            })}
+                          </div>
+                          <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-[60vh] overflow-auto">
+                            {streamingPreview}
+                          </pre>
+                        </div>
+                      ) : (
+                        <GeneratingWaitScreen title={getSectionDisplayTitle(activeSection.title)} />
+                      )
                     ) : displayContent ? (
                       <div className={PROSE_CLASSES}>
                         {renderedMarkdown}

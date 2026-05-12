@@ -75,6 +75,15 @@ const enUS = {
     done: 'Done',
   },
 
+  submissions: {
+    title: 'Submissions',
+    acceptedShort: 'accepted',
+    accepted: 'Accepted',
+    partial: 'Partial',
+    failedRow: '{{passed}}/{{total}} passed',
+    loading: 'Loading...',
+  },
+
   chat: {
     title: 'AI Tutor',
     clearHistory: 'Clear',

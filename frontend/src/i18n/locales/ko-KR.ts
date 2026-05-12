@@ -75,6 +75,15 @@ const koKR = {
     done: '완료',
   },
 
+  submissions: {
+    title: '제출 기록',
+    acceptedShort: '통과',
+    accepted: '전체 통과',
+    partial: '부분 통과',
+    failedRow: '{{passed}}/{{total}} 통과',
+    loading: '불러오는 중...',
+  },
+
   chat: {
     title: 'AI 튜터',
     clearHistory: '기록 삭제',

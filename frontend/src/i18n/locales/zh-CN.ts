@@ -85,6 +85,15 @@ const zhCN = {
   },
 
   // AI Chat
+  submissions: {
+    title: '提交记录',
+    acceptedShort: '通过',
+    accepted: '已通过',
+    partial: '部分通过',
+    failedRow: '{{passed}}/{{total}} 通过',
+    loading: '加载中...',
+  },
+
   chat: {
     title: 'AI 助教',
     clearHistory: '清空记录',
