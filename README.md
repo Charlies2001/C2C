@@ -12,10 +12,19 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Charlies2001/C2C-coding-coach/releases/latest"><img src="https://img.shields.io/github/v/release/Charlies2001/C2C-coding-coach?label=latest&color=violet" alt="Latest Release" /></a>
+  <a href="https://github.com/Charlies2001/C2C-coding-coach/releases/latest"><img src="https://img.shields.io/github/downloads/Charlies2001/C2C-coding-coach/total?label=downloads&color=cyan" alt="Downloads" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/python-3.12+-green.svg" alt="Python 3.12+" />
   <img src="https://img.shields.io/badge/node-20+-green.svg" alt="Node 20+" />
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
+</p>
+
+<p align="center">
+  <strong>⬇ 立即下载</strong>　
+  <a href="https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-macos-arm64.zip"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon-000?logo=apple&logoColor=white" alt="Download macOS" /></a>
+  <a href="https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-windows-x64.zip"><img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white" alt="Download Windows" /></a>
+  <a href="https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-linux-x64.tar.gz"><img src="https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black" alt="Download Linux" /></a>
 </p>
 
 [中文](#三步上手) | [English](#why-c2c)
@@ -26,36 +35,58 @@
 
 C2C 是开源项目，**不收费、不消耗你的钱**——你用自己申请的 LLM API Key（Anthropic / OpenAI / 通义 / 豆包 / GLM / Gemini 任选其一）。
 
-### 方式 1：下载桌面版（推荐 · 零依赖）
+### 🚀 方式 1：下载桌面版（强烈推荐 · 零依赖 · 离线可用）
 
-去 [Releases](https://github.com/Charlies2001/C2C-coding-coach/releases) 下载对应平台的包：
+**一次下载，本地运行；后端 + 前端 + Python 运行时全打进一个 app，不需要装 Docker、不需要装 Python、不需要装 Node。**
 
-| 平台 | 文件 | 怎么用 |
+| 平台 | 文件 | 一键下载 |
 |------|------|--------|
-| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | 解压拖到「应用程序」 |
-| Windows (x64) | `CodingBot-windows-x64.zip` | 解压双击 `CodingBot.exe` |
-| Linux (x64) | `CodingBot-linux-x64.tar.gz` | `tar xzf` 后 `./CodingBot/CodingBot` |
+| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | [⬇ 下载 macOS](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-macos-arm64.zip) |
+| Windows (x64) | `CodingBot-windows-x64.zip` | [⬇ 下载 Windows](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-windows-x64.zip) |
+| Linux (x64) | `CodingBot-linux-x64.tar.gz` | [⬇ 下载 Linux](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-linux-x64.tar.gz) |
 
-启动后会自动打开浏览器，左上角/任务栏角落会出现一个 C2C 系统托盘图标——这是 app 在运行的标志，**关闭浏览器标签后请通过托盘菜单退出**，否则后台还在跑。
+启动后会自动打开浏览器；左上角 / 任务栏角落出现 C2C 托盘图标 —— 这是 app 还在运行的标志。**关闭浏览器标签不会退出 app，需要通过托盘菜单 → Quit。**
 
-#### ⚠️ 首次启动会被系统拦截（无代码签名）
+---
 
-开源项目没买代码签名证书，三个系统都会拦截一次。**只需放行一次，之后不再提示。**
+#### ⚠️ 首次启动会被系统拦截（这是因为我们没买代码签名证书）
 
-**macOS**（看到「Apple 无法验证 CodingBot 是否包含恶意软件」）：
+开源项目没买价值上千美元的代码签名证书，**三大系统首次启动都会出警告**。这只是因为系统不认识发布者，**不是病毒**。**放行一次，之后再也不会提示**。
 
-终端跑一行（最快）：
+##### macOS（"Apple 无法验证 CodingBot 是否包含恶意软件"）
+
+**方案 A — 终端一行命令（最快，推荐）：**
 ```bash
 xattr -dr com.apple.quarantine /Applications/CodingBot.app
 ```
+然后双击 CodingBot.app，直接打开，没有任何提示。
 
-或图形化：双击 app → 警告框点「完成」→ 打开 **System Settings → Privacy & Security** → 滚到底部找到 "CodingBot was blocked" → 点 **「Open Anyway」**。
+**方案 B — 图形化（适合不熟悉终端的同学）：**
 
-**Windows**（看到 SmartScreen 蓝色「Windows 已保护你的电脑」）：
+1. 双击 `CodingBot.app` → 弹出「Apple 无法验证…」警告 → 点 **完成 / Done**（不要点"移到废纸篓"）
+2. 打开 **系统设置 → 隐私与安全性**（System Settings → Privacy & Security）
+3. 滚到页面底部，看到 *"CodingBot was blocked from use because it is not from an identified developer"*
+4. 点旁边的 **「仍要打开 / Open Anyway」** 按钮
+5. 再次双击 CodingBot.app，弹窗会变成「打开 / Open」按钮，点它 → 启动
 
-点警告框里的 **「更多信息」** → 出现 **「仍要运行」** 按钮 → 点它。
+> **macOS Sequoia (15) 注意**：Sequoia 已经移除了"右键 → 打开"绕过 Gatekeeper 的入口，**必须**用上面方案 A 或方案 B 之一。
 
-**Linux**：通常不会被拦。如果文件没有执行权限，跑 `chmod +x ./CodingBot/CodingBot`。
+##### Windows（SmartScreen 蓝色「Windows 已保护你的电脑」）
+
+1. 解压 zip → 双击 `CodingBot.exe`
+2. 弹出蓝色 SmartScreen 警告
+3. 点警告里**左下角不起眼的「更多信息 / More info」**
+4. 展开后出现 **「仍要运行 / Run anyway」** 按钮 → 点它
+
+> 如果杀毒软件（360 / 腾讯电脑管家 / Defender）误报，需要在杀毒软件里把 CodingBot 加白名单。这是 PyInstaller 打包的 Python app 的常见误报。
+
+##### Linux
+
+通常不会被拦截。如果双击没反应：
+```bash
+chmod +x ./CodingBot/CodingBot
+./CodingBot/CodingBot
+```
 
 ### 方式 2：Docker 一行命令（自己跑后端）
 
@@ -478,14 +509,58 @@ C2C is built for people who want to **learn**, not just copy solutions — wheth
 
 ### Quick Start
 
-#### Option 1: Download desktop app (recommended, zero deps)
+#### Option 1: Download desktop app (recommended, zero deps, offline-ready)
 
-Grab a release for your OS at [Releases](https://github.com/Charlies2001/C2C-coding-coach/releases):
-- `CodingBot-macos-arm64.zip` — drag to Applications, then `xattr -dr com.apple.quarantine /Applications/CodingBot.app` to bypass Gatekeeper
-- `CodingBot-windows-x64.zip` — unzip and run `CodingBot.exe` (SmartScreen → "More info" → "Run anyway")
-- `CodingBot-linux-x64.tar.gz` — `tar xzf` and `./CodingBot/CodingBot`
+**One download — backend + frontend + Python runtime all bundled. No Docker / Python / Node required.**
 
-Launch → tray icon appears → browser opens → register an account → enter your LLM API key in Settings.
+| Platform | File | Download |
+|---|---|---|
+| macOS (Apple Silicon) | `CodingBot-macos-arm64.zip` | [⬇ Download macOS](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-macos-arm64.zip) |
+| Windows (x64) | `CodingBot-windows-x64.zip` | [⬇ Download Windows](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-windows-x64.zip) |
+| Linux (x64) | `CodingBot-linux-x64.tar.gz` | [⬇ Download Linux](https://github.com/Charlies2001/C2C-coding-coach/releases/latest/download/CodingBot-linux-x64.tar.gz) |
+
+After launch a tray icon appears; the browser opens to the app. **Closing the browser tab does NOT quit the app** — use the tray icon → Quit.
+
+##### ⚠️ First-launch warnings (no code signing — open-source, no $$$ for certs)
+
+All three OSes warn once on first launch because the publisher is unsigned. **Not malware. Allow once, never asked again.**
+
+**macOS** ("Apple could not verify CodingBot is free of malware")
+
+*Option A — one terminal command (fastest):*
+```bash
+xattr -dr com.apple.quarantine /Applications/CodingBot.app
+```
+Then double-click — no more prompts.
+
+*Option B — GUI:*
+
+1. Double-click `CodingBot.app` → the "cannot be verified" alert → click **Done** (NOT Move to Trash)
+2. Open **System Settings → Privacy & Security**
+3. Scroll to the bottom: *"CodingBot was blocked from use because it is not from an identified developer"*
+4. Click **Open Anyway**
+5. Double-click `CodingBot.app` again → click **Open** in the new dialog
+
+> **macOS Sequoia (15) note**: Sequoia removed the right-click → Open workaround. You **must** use Option A or B above.
+
+**Windows** (SmartScreen blue "Windows protected your PC")
+
+1. Unzip → double-click `CodingBot.exe`
+2. SmartScreen warning appears
+3. Click the small **More info** link
+4. Click the newly-revealed **Run anyway** button
+
+> Some Chinese antivirus (360 / Tencent / etc.) and even Windows Defender occasionally false-positive on PyInstaller-packed Python apps. Whitelist `CodingBot.exe` if needed.
+
+**Linux**
+
+Usually no block. If the binary doesn't launch:
+```bash
+chmod +x ./CodingBot/CodingBot
+./CodingBot/CodingBot
+```
+
+Launch → tray icon → browser opens → register an account → enter your LLM API key in Settings.
 
 #### Option 2: Docker
 
