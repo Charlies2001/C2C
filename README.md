@@ -53,7 +53,9 @@ C2C 是开源项目，**不收费、不消耗你的钱**——你用自己申请
 
 开源项目没买价值上千美元的代码签名证书，**三大系统首次启动都会出警告**。这只是因为系统不认识发布者，**不是病毒**。**放行一次，之后再也不会提示**。
 
-##### macOS（"Apple 无法验证 CodingBot 是否包含恶意软件"）
+##### macOS（"Apple 无法验证..." 或 "应用无法打开" 错误码 -47）
+
+> 看到 **"应用无法打开 (-47)"** 也是同一个问题——macOS Sequoia 把原来的 "无法验证" 警告换成了这个错误码。
 
 **方案 A — 终端一行命令（最快，推荐）：**
 ```bash
@@ -61,15 +63,26 @@ xattr -dr com.apple.quarantine /Applications/CodingBot.app
 ```
 然后双击 CodingBot.app，直接打开，没有任何提示。
 
+> 如果你把 app 放在别处（比如 Downloads），把路径换成实际位置：
+> ```bash
+> xattr -dr com.apple.quarantine ~/Downloads/CodingBot.app
+> ```
+
+> **每次下载新版本都要重做一次**（quarantine 是按文件挂的，新版 = 新文件）。
+
 **方案 B — 图形化（适合不熟悉终端的同学）：**
 
-1. 双击 `CodingBot.app` → 弹出「Apple 无法验证…」警告 → 点 **完成 / Done**（不要点"移到废纸篓"）
+1. 双击 `CodingBot.app` → 弹出「Apple 无法验证…」/「应用无法打开 -47」警告 → 点 **完成 / Done**（不要点"移到废纸篓"）
 2. 打开 **系统设置 → 隐私与安全性**（System Settings → Privacy & Security）
 3. 滚到页面底部，看到 *"CodingBot was blocked from use because it is not from an identified developer"*
 4. 点旁边的 **「仍要打开 / Open Anyway」** 按钮
 5. 再次双击 CodingBot.app，弹窗会变成「打开 / Open」按钮，点它 → 启动
 
 > **macOS Sequoia (15) 注意**：Sequoia 已经移除了"右键 → 打开"绕过 Gatekeeper 的入口，**必须**用上面方案 A 或方案 B 之一。
+
+**如果命令解过了还是打不开**：
+- 跑 `uname -m` 确认你的 Mac 架构 —— `arm64` 是 Apple Silicon（我们的包），`x86_64` 是 Intel Mac（**目前不支持**，请走 Docker 方式或本地开发）
+- 如果之前打开过旧版本，先到顶部菜单栏托盘里 Quit 旧的 CodingBot，再开新版
 
 ##### Windows（SmartScreen 蓝色「Windows 已保护你的电脑」）
 
@@ -525,7 +538,9 @@ After launch a tray icon appears; the browser opens to the app. **Closing the br
 
 All three OSes warn once on first launch because the publisher is unsigned. **Not malware. Allow once, never asked again.**
 
-**macOS** ("Apple could not verify CodingBot is free of malware")
+**macOS** ("Apple could not verify..." or "The application can't be opened. -47")
+
+> The **error code -47** is the same problem — macOS Sequoia replaced the old "could not be verified" dialog with this terse error.
 
 *Option A — one terminal command (fastest):*
 ```bash
@@ -533,15 +548,26 @@ xattr -dr com.apple.quarantine /Applications/CodingBot.app
 ```
 Then double-click — no more prompts.
 
+> If the app lives elsewhere (e.g. Downloads), swap the path:
+> ```bash
+> xattr -dr com.apple.quarantine ~/Downloads/CodingBot.app
+> ```
+
+> **You'll need to re-run this every time you download a new version** — quarantine is attached to the file, and a new release is a new file.
+
 *Option B — GUI:*
 
-1. Double-click `CodingBot.app` → the "cannot be verified" alert → click **Done** (NOT Move to Trash)
+1. Double-click `CodingBot.app` → the "cannot be verified" / "-47" alert → click **Done** (NOT Move to Trash)
 2. Open **System Settings → Privacy & Security**
 3. Scroll to the bottom: *"CodingBot was blocked from use because it is not from an identified developer"*
 4. Click **Open Anyway**
 5. Double-click `CodingBot.app` again → click **Open** in the new dialog
 
 > **macOS Sequoia (15) note**: Sequoia removed the right-click → Open workaround. You **must** use Option A or B above.
+
+**Still won't open after the command?**
+- Run `uname -m` — `arm64` = Apple Silicon (our build), `x86_64` = Intel Mac (**not supported yet**, use Docker or run from source).
+- If an older version was previously running, quit the old CodingBot from the menubar tray before launching the new one.
 
 **Windows** (SmartScreen blue "Windows protected your PC")
 
