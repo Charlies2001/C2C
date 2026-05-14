@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import type { SubmissionRecord } from '../../api/submissions';
 
 interface Props {
   problemId: number;
 }
+
+// Stable reference so the selector below doesn't return a brand-new [] on every
+// render when this problem has no submissions yet — that would trigger an
+// infinite re-render loop (React #185).
+const EMPTY_SUBMISSIONS: SubmissionRecord[] = [];
 
 function formatRelativeTime(iso: string, lang: string): string {
   try {
@@ -44,7 +50,7 @@ function formatRelativeTime(iso: string, lang: string): string {
 
 export default function SubmissionsPanel({ problemId }: Props) {
   const { t, i18n } = useTranslation();
-  const submissions = useStore((s) => s.submissionsByProblem[problemId] || []);
+  const submissions = useStore((s) => s.submissionsByProblem[problemId] ?? EMPTY_SUBMISSIONS);
   const isLoading = useStore((s) => s.isSubmissionsLoading);
   const [collapsed, setCollapsed] = useState(false);
 
