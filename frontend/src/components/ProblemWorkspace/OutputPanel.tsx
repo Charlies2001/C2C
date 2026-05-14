@@ -215,7 +215,7 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
     setOutput(t('output.testResult', { passed, total: results.length }));
     // Persist this submission to the server (per-problem history).
     // Fire-and-forget — failure is silently swallowed in the store action.
-    void recordSubmission(currentProblem.id, passed, results.length);
+    void recordSubmission(currentProblem.id, passed, results.length, code);
     if (passed === results.length) {
       resetFailures();
       if (currentProblem) {

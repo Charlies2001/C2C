@@ -77,11 +77,15 @@ const jaJP = {
 
   submissions: {
     title: '提出履歴',
-    acceptedShort: '合格',
+    triggerLabel: '{{total}} 回',
+    openTooltip: '過去の提出（コード付き）を表示',
+    summary: '{{passed}}/{{total}} 合格',
     accepted: '全テスト合格',
     partial: '一部合格',
     failedRow: '{{passed}}/{{total}} 合格',
     loading: '読み込み中...',
+    empty: 'まだ提出履歴がありません',
+    noCode: 'コードが保存されていません（v1.3.1 より前の提出）',
   },
 
   chat: {

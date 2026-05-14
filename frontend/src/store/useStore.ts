@@ -131,7 +131,7 @@ interface AppState {
   submissionsByProblem: Record<number, SubmissionRecord[]>;
   isSubmissionsLoading: boolean;
   loadSubmissionsForProblem: (problemId: number) => Promise<void>;
-  recordSubmission: (problemId: number, passedCount: number, totalCount: number) => Promise<void>;
+  recordSubmission: (problemId: number, passedCount: number, totalCount: number, code: string) => Promise<void>;
 }
 
 // Limit chat history to prevent unbounded memory/localStorage growth
@@ -597,7 +597,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isSubmissionsLoading: false });
     }
   },
-  recordSubmission: async (problemId, passedCount, totalCount) => {
+  recordSubmission: async (problemId, passedCount, totalCount, code) => {
     // Optimistic prepend so the UI updates immediately; replace with server row on success.
     const optimistic: SubmissionRecord = {
       id: -Date.now(), // negative sentinel until server assigns real id
@@ -605,6 +605,7 @@ export const useStore = create<AppState>((set, get) => ({
       passed_count: passedCount,
       total_count: totalCount,
       all_passed: passedCount === totalCount,
+      code,
       submitted_at: new Date().toISOString(),
     };
     set((state) => ({
@@ -618,6 +619,7 @@ export const useStore = create<AppState>((set, get) => ({
         problem_id: problemId,
         passed_count: passedCount,
         total_count: totalCount,
+        code,
       });
       set((state) => {
         const list = state.submissionsByProblem[problemId] || [];

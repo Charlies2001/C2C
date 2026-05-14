@@ -77,11 +77,15 @@ const enUS = {
 
   submissions: {
     title: 'Submissions',
-    acceptedShort: 'accepted',
+    triggerLabel: '{{total}}',
+    openTooltip: 'View past submissions (with code)',
+    summary: '{{passed}}/{{total}} accepted',
     accepted: 'Accepted',
     partial: 'Partial',
     failedRow: '{{passed}}/{{total}} passed',
     loading: 'Loading...',
+    empty: 'No submissions yet',
+    noCode: 'No code saved (submission predates v1.3.1)',
   },
 
   chat: {

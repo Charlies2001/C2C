@@ -77,11 +77,15 @@ const koKR = {
 
   submissions: {
     title: '제출 기록',
-    acceptedShort: '통과',
+    triggerLabel: '{{total}} 회',
+    openTooltip: '과거 제출(코드 포함) 보기',
+    summary: '{{passed}}/{{total}} 통과',
     accepted: '전체 통과',
     partial: '부분 통과',
     failedRow: '{{passed}}/{{total}} 통과',
     loading: '불러오는 중...',
+    empty: '아직 제출 기록이 없습니다',
+    noCode: '코드가 저장되지 않음 (v1.3.1 이전 제출)',
   },
 
   chat: {

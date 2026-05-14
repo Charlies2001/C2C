@@ -16,6 +16,7 @@ class SubmissionCreate(BaseModel):
     problem_id: int
     passed_count: int = Field(ge=0)
     total_count: int = Field(ge=1)
+    code: str = Field(default="", max_length=50000)
 
 
 class SubmissionResponse(BaseModel):
@@ -24,6 +25,7 @@ class SubmissionResponse(BaseModel):
     passed_count: int
     total_count: int
     all_passed: bool
+    code: str | None = None
     submitted_at: str
 
     class Config:
@@ -37,6 +39,7 @@ def _serialize(s: Submission) -> SubmissionResponse:
         passed_count=s.passed_count,
         total_count=s.total_count,
         all_passed=s.all_passed,
+        code=s.code,
         submitted_at=s.submitted_at.isoformat() if s.submitted_at else "",
     )
 
@@ -57,6 +60,7 @@ def create_submission(
         passed_count=req.passed_count,
         total_count=req.total_count,
         all_passed=req.passed_count == req.total_count,
+        code=req.code or None,
     )
     db.add(sub)
     db.commit()

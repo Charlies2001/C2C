@@ -1,10 +1,15 @@
+import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import HintPanel from './HintPanel';
 import NotePanel from './NotePanel';
-import SubmissionsPanel from './SubmissionsPanel';
+import SubmissionsModal from './SubmissionsModal';
 import BookmarkButton from '../BookmarkButton';
+import type { SubmissionRecord } from '../../api/submissions';
+
+// Stable empty ref to keep the selector return shallow-equal across renders.
+const EMPTY_SUBS: SubmissionRecord[] = [];
 
 const difficultyColors: Record<string, string> = {
   Easy: 'text-emerald-400 bg-emerald-400/10',
@@ -15,6 +20,18 @@ const difficultyColors: Record<string, string> = {
 export default function ProblemDescription() {
   const { t } = useTranslation();
   const problem = useStore((s) => s.currentProblem);
+  const submissions = useStore((s) =>
+    problem ? s.submissionsByProblem[problem.id] ?? EMPTY_SUBS : EMPTY_SUBS
+  );
+  const [showSubmissions, setShowSubmissions] = useState(false);
+
+  const subsStats = useMemo(
+    () => ({
+      total: submissions.length,
+      accepted: submissions.filter((s) => s.all_passed).length,
+    }),
+    [submissions],
+  );
 
   if (!problem) {
     return (
@@ -37,7 +54,26 @@ export default function ProblemDescription() {
               {problem.category}
             </span>
           </div>
-          <BookmarkButton problemId={problem.id} />
+          <div className="flex items-center gap-2">
+            {subsStats.total > 0 && (
+              <button
+                onClick={() => setShowSubmissions(true)}
+                title={t('submissions.openTooltip')}
+                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border border-white/10 bg-gray-800/40 text-gray-300 hover:bg-gray-800/70 hover:border-violet-500/40 transition-colors"
+              >
+                <span>📋</span>
+                <span>
+                  {t('submissions.triggerLabel', {
+                    total: subsStats.total,
+                  })}
+                </span>
+                {subsStats.accepted > 0 && (
+                  <span className="text-emerald-400 ml-0.5">✓ {subsStats.accepted}</span>
+                )}
+              </button>
+            )}
+            <BookmarkButton problemId={problem.id} />
+          </div>
         </div>
         <div className="prose prose-invert prose-sm max-w-none prose-violet
           prose-headings:text-white prose-headings:font-semibold
@@ -52,9 +88,13 @@ export default function ProblemDescription() {
           <ReactMarkdown>{problem.description}</ReactMarkdown>
         </div>
         <NotePanel problemId={problem.id} />
-        <SubmissionsPanel problemId={problem.id} />
         <HintPanel />
       </div>
+      <SubmissionsModal
+        open={showSubmissions}
+        onClose={() => setShowSubmissions(false)}
+        problemId={problem.id}
+      />
     </div>
   );
 }

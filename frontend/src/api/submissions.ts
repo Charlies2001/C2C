@@ -8,6 +8,7 @@ export interface SubmissionRecord {
   passed_count: number;
   total_count: number;
   all_passed: boolean;
+  code: string | null;
   submitted_at: string;
 }
 
@@ -15,6 +16,7 @@ export async function createSubmission(payload: {
   problem_id: number;
   passed_count: number;
   total_count: number;
+  code: string;
 }): Promise<SubmissionRecord> {
   const res = await authFetch(BASE_URL, {
     method: 'POST',

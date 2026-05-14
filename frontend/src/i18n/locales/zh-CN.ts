@@ -87,11 +87,15 @@ const zhCN = {
   // AI Chat
   submissions: {
     title: '提交记录',
-    acceptedShort: '通过',
+    triggerLabel: '{{total}} 次',
+    openTooltip: '查看历次提交（含代码）',
+    summary: '{{passed}}/{{total}} 通过',
     accepted: '已通过',
     partial: '部分通过',
     failedRow: '{{passed}}/{{total}} 通过',
     loading: '加载中...',
+    empty: '还没有提交记录',
+    noCode: '该条记录未保存代码（v1.3.1 之前的旧提交）',
   },
 
   chat: {
