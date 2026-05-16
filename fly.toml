@@ -33,9 +33,11 @@ primary_region = "syd"          # Sydney — owner is in Sydney, so dev/test/dem
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "suspend"     # save free-tier hours when idle
+  auto_stop_machines = "suspend"     # suspend idle machines to save free-tier hours
   auto_start_machines = true
-  min_machines_running = 0            # cold start OK for early traffic; bump to 1 for hot SLA
+  # Multi-region (syd + nrt): keep at least one machine warm in EACH region so
+  # users in Australia and China don't both compete for the same cold start.
+  min_machines_running = 1
   processes = ["app"]
 
   [http_service.concurrency]

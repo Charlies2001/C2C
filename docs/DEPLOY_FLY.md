@@ -1,7 +1,7 @@
 # Fly.io + Neon 部署指南
 
 把 C2C 部署到 Fly.io，数据库走 [Neon](https://neon.tech)（Postgres），HTTPS 自动签发。
-预计耗时：**30–45 分钟**（含等 Fly build）。预计月费：**$0–5**（小流量在免费层内）。
+预计耗时：**30–45 分钟**（含等 Fly build）。预计月费：**$5–15**（双区域 Sydney + Tokyo），单区域可降到 $0–5。
 
 ---
 
@@ -105,6 +105,35 @@ fly logs
 
 ---
 
+## 4.5 扩到 Sydney + Tokyo 双区域（服务中国大陆 + 澳洲）
+
+Fly 没有中国大陆机房，**Tokyo 是离大陆最近的节点（50–100ms）**。同时跑 Sydney + Tokyo 两个 instance，靠 Fly 的 Anycast 把用户路由到最近节点：
+
+```bash
+# 在 syd 和 nrt 各跑 1 台机器
+fly scale count 2 --region syd,nrt
+# 验证两台都起来了
+fly status
+# Machines 列应该看到 2 台，分别在 syd 和 nrt
+```
+
+**数据库跨区域权衡**：
+- Neon 在 Sydney → Sydney Fly 查询 <5ms（最快）
+- Tokyo Fly 查询 Sydney Neon → 跨区域 ~100ms RTT
+- 对 C2C 影响小：大部分查询是单条 problem / submission（< 5ms 本地查询时间），加上 100ms 跨区往返还在用户可接受范围。**AI 流式响应才是真正的延迟瓶颈**，DB 100ms 几乎看不出来
+- 用户量起来后再考虑 Neon Read Replica（付费）放 Tokyo
+
+**国内访问优化**（不需要 ICP 备案）：
+- Cloudflare DNS 已经做了一道：用户解析时拿到的是 Fly Anycast IP，自动就近
+- 静态资源（JS / CSS / Pyodide）可以让 **Cloudflare 缓存**，国内访问就走 CF 的 Anycast 边缘节点（包括香港、台湾等接近大陆的节点）
+- ⚠️ 但 Fly app 端我们之前要求 **DNS only 不开橙云代理**，原因是 Fly 自己处理 TLS。如果只想缓存静态资源，可以：
+  - 主域名 `coding-coach.org` 走 DNS only（API 请求直连 Fly）
+  - 后续把 `/assets/*` `/pyodide/*` 这些静态路径单独放 Cloudflare R2 / Pages，开橙云加速
+
+> **现阶段先 DNS only 跑通**。等 Tokyo 节点上线后实测国内访问延迟，决定要不要再做 CDN 优化。
+
+---
+
 ## 5. 绑定自有域名 + HTTPS
 
 ### 5.1 在 Fly 端登记证书
@@ -187,21 +216,27 @@ curl -sf https://coding-coach.org/api/metrics | jq
 
 ## 8. 成本控制
 
-| 资源 | 当前配置 | 免费层覆盖？ | 超出后单价 |
-|---|---|---|---|
-| App（shared-cpu-1x · 512MB · 1 machine） | 1 instance | ✅ 免费层 3 个 256MB 共 8GB-hour/月 | $0.0000022/秒 |
-| 出站流量 | 100 GB/月 | ✅ 免费层 160GB/月 | $0.02/GB（北美/欧洲） |
-| Neon Postgres | 0.5GB | ✅ 免费层 0.5GB + 自动休眠 | $0.04/GB/月 |
-| Fly SSL 证书 | 1 个 | ✅ 免费 | — |
-| **总计（早期 < 100 DAU）** | | | **$0/月** |
+| 资源 | 当前配置 | 大概月费 |
+|---|---|---|
+| App · Sydney (shared-cpu-1x · 512MB) | 1 machine, 常驻 | ~$3.19 |
+| App · Tokyo (shared-cpu-1x · 512MB) | 1 machine, 常驻 | ~$3.19 |
+| 出站流量 | 估 < 100 GB/月 | $0（免费层 160GB） |
+| Neon Postgres (Sydney) | 0.5GB Free | $0 |
+| Fly SSL 证书 | 1 主域 + 1 www | $0 |
+| **总计（早期 < 100 DAU）** | | **~$6-7/月** |
 
-如果流量上来：
+> 如果想降本，把 `min_machines_running` 改回 `0` 就行，但会有 1-2 秒冷启动。
+> 早期用户基数不大时其实可以接受。
+>
+> 如果只用单区域 Sydney，月费可降到 **$0-3**（甚至 $0，全在免费层）。
+
+如果流量上来要升级：
 ```bash
-# 让机器常驻不休眠（首字节响应更快）
-# fly.toml: min_machines_running = 1
-fly deploy
-
-# Neon 升级到 $19/月 Launch 计划（取消自动休眠 + 更大存储）
+# Neon 升级到 $19/月 Launch 计划（取消自动休眠 + 更大存储 + Read Replica）
+# Fly 扩容到第三个区域
+fly scale count 1 --region hkg            # 加香港，更靠近大陆
+# 或扩到 2 GB 内存
+# fly.toml 改 [[vm]] memory = "1gb" → fly deploy
 ```
 
 ---
@@ -213,7 +248,7 @@ fly deploy
 | `fly deploy` build 失败 | 看日志最后几行：通常是 npm install 网络或 Python 包冲突 |
 | 部署成功但访问 502 | `fly logs` 看 backend 启动错误（多半是 DATABASE_URL 没设或 Neon 没启动） |
 | 证书 stuck 在 `awaiting verification` | Cloudflare 橙云没关，必须 DNS only |
-| 国内访问慢/偶尔 timeout | Fly 没有国内节点；可以在 Cloudflare 开 Argo Smart Routing（付费），或者另外起一个国内备案的镜像节点 |
+| 国内访问慢/偶尔 timeout | 已有 Tokyo 节点（§4.5），还慢的话考虑加香港 `fly scale count 1 --region hkg`；真要"国内速度"需要 ICP 备案 + 国内 VPS |
 | Neon 报 `too many connections` | App 重启太频繁；`fly.toml` 加 `min_machines_running=1` 防止冷启风暴 |
 | 跑了几天发现 secret 漏配 | `fly secrets list` 看一眼；漏了直接 `fly secrets set KEY=...` 会自动 rolling restart |
 
