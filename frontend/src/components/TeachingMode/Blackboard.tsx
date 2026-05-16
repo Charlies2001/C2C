@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { streamTeachingSection } from '../../api/ai';
 import CodeBlock from './CodeBlock';
 import GuidedCoding from './GuidedCoding';
@@ -214,6 +215,7 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
     (index: number) => {
       const context = getContext();
       if (!context) return;
+      if (!useAuthStore.getState().requireLogin(t('loginGate.forTeaching'))) return;
 
       const abort = new AbortController();
       abortRef.current = abort;

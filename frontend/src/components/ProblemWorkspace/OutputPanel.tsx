@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { runPythonCode } from '../../services/pyodide';
 import { fetchReferenceSolution, fixTestCase } from '../../api/problems';
 import type { TestResult } from '../../types/problem';
@@ -83,6 +84,7 @@ export default function OutputPanel({ onGoToTeaching }: { onGoToTeaching: () => 
 
   const disputeTestCase = async (r: TestResult) => {
     if (isAILoading || disputeIndex !== null || !currentProblem || !pyodideReady) return;
+    if (!useAuthStore.getState().requireLogin(t('loginGate.forDispute'))) return;
     setDisputeIndex(r.index);
     setDisputeError('');
     setAutoFix(null);

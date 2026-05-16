@@ -18,11 +18,28 @@ interface AuthState {
   logout: () => void;
   /** Refresh user info from server (e.g. after saving API key) */
   refreshUser: () => Promise<void>;
+
+  // ─── Login gate (for guest-mode UX) ───
+  showLoginGate: boolean;
+  loginGateMessage: string;
+  /** Returns true if the user is already logged in. Otherwise opens the login
+   *  gate modal with the given message and returns false. Use at the entrance
+   *  to any feature that requires server-side auth (AI calls, notebooks, etc.). */
+  requireLogin: (message: string) => boolean;
+  closeLoginGate: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
+  showLoginGate: false,
+  loginGateMessage: '',
+  requireLogin: (message) => {
+    if (get().user) return true;
+    set({ showLoginGate: true, loginGateMessage: message });
+    return false;
+  },
+  closeLoginGate: () => set({ showLoginGate: false }),
 
   init: async () => {
     if (!getAccessToken()) {

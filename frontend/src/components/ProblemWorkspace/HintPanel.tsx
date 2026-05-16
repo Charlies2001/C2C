@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { streamHint } from '../../api/ai';
 
 const hintMarkdownComponents: Record<string, React.ComponentType<any>> = {
@@ -62,6 +63,7 @@ export default function HintPanel() {
 
   const handleRequestHint = useCallback(() => {
     if (!currentProblem || isHintLoading || allLevelsCovered) return;
+    if (!useAuthStore.getState().requireLogin(t('loginGate.forHint'))) return;
 
     dismissHintNudge();
     setIsHintLoading(true);

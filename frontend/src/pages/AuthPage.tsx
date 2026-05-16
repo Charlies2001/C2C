@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function AuthPage() {
@@ -34,11 +34,16 @@ export default function AuthPage() {
   return (
     <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
             C2C
           </h1>
           <p className="text-gray-500 text-sm mt-1">Coding to Creating</p>
+          <p className="text-xs text-gray-400 mt-3 leading-relaxed px-4">
+            {isLogin
+              ? '欢迎回来。登录后即可使用 AI 助教、教学、提示等功能。'
+              : '注册解锁 AI 教学 / 助教 / 提示，多设备同步笔记和刷题记录。'}
+          </p>
         </div>
 
         <div className="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
@@ -82,7 +87,9 @@ export default function AuthPage() {
             )}
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">邮箱</label>
+              <label className="block text-sm text-gray-400 mb-1.5">
+                邮箱 <span className="text-gray-600 text-xs ml-1">用于登录和后续找回密码</span>
+              </label>
               <input
                 type="email"
                 value={email}
@@ -120,6 +127,19 @@ export default function AuthPage() {
               {loading ? '处理中...' : isLogin ? '登录' : '注册'}
             </button>
           </form>
+
+          {!isLogin && (
+            <p className="text-[11px] text-gray-500 mt-4 leading-relaxed">
+              注册即同意我们以最小化方式存储邮箱、加密密码（bcrypt）和你后续可选填的
+              API Key（Fernet 加密）。前端任何位置都看不到这些明文。
+            </p>
+          )}
+        </div>
+
+        <div className="text-center mt-4">
+          <Link to="/problems" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+            先以游客模式逛逛 →
+          </Link>
         </div>
       </div>
     </div>

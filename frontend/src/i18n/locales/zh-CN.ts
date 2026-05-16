@@ -85,6 +85,22 @@ const zhCN = {
   },
 
   // AI Chat
+  loginGate: {
+    title: '登录后解锁',
+    defaultMessage: '该功能需要登录使用',
+    benefit1: 'AI 助教、提示、教学课件、出题等 AI 功能',
+    benefit2: 'API Key 用 Fernet 加密存到后端（前端不留明文）',
+    benefit3: '笔记、提交记录、刷题进度多设备同步',
+    goLogin: '登录 / 注册',
+    later: '稍后',
+    forChat: '登录后，AI 助教就能看到你的代码、引导你解题。',
+    forHint: '登录后，遇到难题可以一键拿到分级提示。',
+    forTeaching: '登录后，AI 会为每道题生成专属教学课件。',
+    forDispute: '登录后，AI 会自动验证测试用例对错，可一键修正题目。',
+    forGenerateProblem: '登录后，可以让 AI 用一句话给你出一道完整题目。',
+    forVerifyProblem: '登录后，AI 会自动检查你上传题目的测试用例对不对。',
+  },
+
   submissions: {
     title: '提交记录',
     triggerLabel: '{{total}} 次',

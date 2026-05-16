@@ -75,6 +75,22 @@ const koKR = {
     done: '완료',
   },
 
+  loginGate: {
+    title: '로그인하여 잠금 해제',
+    defaultMessage: '이 기능은 계정이 필요합니다',
+    benefit1: 'AI 튜터, 점진적 힌트, 강의 챕터, 문제 생성 등 AI 기능',
+    benefit2: 'API Key는 서버에 Fernet 암호화 저장 (브라우저에 평문 없음)',
+    benefit3: '메모, 제출 기록, 학습 진도 다기기 동기화',
+    goLogin: '로그인 / 회원가입',
+    later: '나중에',
+    forChat: '로그인하면 AI 튜터가 당신의 코드를 보고 안내해드립니다.',
+    forHint: '로그인하면 막혔을 때 단계별 힌트를 받을 수 있습니다.',
+    forTeaching: '로그인하면 문제마다 전용 교재가 자동 생성됩니다.',
+    forDispute: '로그인하면 AI가 테스트 케이스 정오를 검증하고 원클릭으로 수정할 수 있습니다.',
+    forGenerateProblem: '로그인하면 한 문장으로 AI에게 문제를 만들어달라 할 수 있습니다.',
+    forVerifyProblem: '로그인하면 저장 전에 AI가 테스트 케이스를 검증해드립니다.',
+  },
+
   submissions: {
     title: '제출 기록',
     triggerLabel: '{{total}} 회',

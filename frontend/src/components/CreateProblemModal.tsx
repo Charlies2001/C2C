@@ -4,6 +4,7 @@ import { generateProblem, createProblem, fetchReferenceSolution } from '../api/p
 import type { TestCase } from '../types/problem';
 import { runPythonCode } from '../services/pyodide';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface VerifyResult {
   index: number;
@@ -72,6 +73,7 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
 
   const handleGenerate = async () => {
     if (!description.trim()) return;
+    if (!useAuthStore.getState().requireLogin(t('loginGate.forGenerateProblem'))) return;
     setLoading(true);
     setError('');
     try {
@@ -128,6 +130,7 @@ export default function CreateProblemModal({ open, onClose, onCreated }: Props) 
       setVerifyError(t('createProblem.verifyMissingFields'));
       return;
     }
+    if (!useAuthStore.getState().requireLogin(t('loginGate.forVerifyProblem'))) return;
     setVerifying(true);
     setVerifyError('');
     setVerifyResults(null);

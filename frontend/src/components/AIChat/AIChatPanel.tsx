@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { streamAIChat } from '../../api/ai';
 
 // AbortController ref for cancelling in-flight chat requests
@@ -130,6 +131,8 @@ export default function AIChatPanel() {
     const source = overrideText !== undefined ? overrideText : input;
     const trimmed = source.trim();
     if (!trimmed || isAILoading) return;
+    // Guest-mode gate: AI helpers require a server-side decrypted API Key.
+    if (!useAuthStore.getState().requireLogin(t('loginGate.forChat'))) return;
 
     const userMsg = { role: 'user' as const, content: trimmed };
     addChatMessage(userMsg);

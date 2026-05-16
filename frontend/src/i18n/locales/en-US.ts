@@ -75,6 +75,22 @@ const enUS = {
     done: 'Done',
   },
 
+  loginGate: {
+    title: 'Sign in to unlock',
+    defaultMessage: 'This feature requires an account',
+    benefit1: 'AI tutor, progressive hints, teaching chapters, problem generation',
+    benefit2: 'API keys stored encrypted on the server (never plain in the browser)',
+    benefit3: 'Notes, submissions, progress sync across devices',
+    goLogin: 'Sign in / Register',
+    later: 'Later',
+    forChat: 'Sign in to let the AI tutor see your code and guide you through.',
+    forHint: 'Sign in to unlock 4-level progressive hints when you get stuck.',
+    forTeaching: 'Sign in to auto-generate teaching chapters tailored to each problem.',
+    forDispute: 'Sign in to let the AI verify test cases and auto-fix wrong expected values.',
+    forGenerateProblem: 'Sign in to let AI generate a full problem from one sentence.',
+    forVerifyProblem: 'Sign in to let AI verify your problem\'s test cases before saving.',
+  },
+
   submissions: {
     title: 'Submissions',
     triggerLabel: '{{total}}',

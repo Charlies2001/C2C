@@ -75,6 +75,22 @@ const jaJP = {
     done: '完了',
   },
 
+  loginGate: {
+    title: 'サインインして解放',
+    defaultMessage: 'この機能を使うにはアカウントが必要です',
+    benefit1: 'AI チューター・ヒント・教材・問題生成などの AI 機能',
+    benefit2: 'API Key はサーバー側で Fernet 暗号化保存（ブラウザに平文を残さない）',
+    benefit3: 'メモ・提出履歴・学習進捗をマルチデバイス同期',
+    goLogin: 'サインイン / 登録',
+    later: '後で',
+    forChat: 'サインインすると AI チューターがあなたのコードを見て導いてくれます。',
+    forHint: 'サインインすると詰まったときに段階的ヒントが使えます。',
+    forTeaching: 'サインインすると問題ごとに専用の教材が自動生成されます。',
+    forDispute: 'サインインすると AI がテストケースの正誤を検証し、ワンクリックで修正できます。',
+    forGenerateProblem: 'サインインすると一文で AI に問題を作ってもらえます。',
+    forVerifyProblem: 'サインインすると保存前に AI がテストケースを検証してくれます。',
+  },
+
   submissions: {
     title: '提出履歴',
     triggerLabel: '{{total}} 回',
