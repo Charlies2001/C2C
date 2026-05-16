@@ -24,7 +24,8 @@
 ## 1. Neon: 创建 Postgres 数据库
 
 1. 打开 https://console.neon.tech → 新建项目（**Project**）
-2. **Region** 选跟 Fly 同区域：东京 `Asia Pacific (Tokyo)`（跟 fly.toml 的 `primary_region=nrt` 对齐，减少跨区域延迟）
+2. **Region** 选跟 Fly 同区域：**`AWS Asia Pacific (Sydney)`**（跟 fly.toml 的 `primary_region=syd` 对齐，DB 跟 app 之间 < 10ms）
+   - 如果未来你的用户主要在中国大陆 / 东亚，再考虑改用 Tokyo / Singapore
 3. **Postgres version** 默认 16 就行
 4. 创建后页面会展示一串 **Connection string**，形如：
 

@@ -8,7 +8,9 @@
 #   fly certs create coding-coach.org
 
 app = "coding-coach"
-primary_region = "nrt"          # Tokyo — best balance for China + APAC. Change if your audience differs.
+primary_region = "syd"          # Sydney — owner is in Sydney, so dev/test/demo latency wins.
+                                #   Add APAC nodes later when traffic grows:
+                                #     fly scale count 1 --region syd,nrt,hkg
 
 [build]
   dockerfile = "Dockerfile"
