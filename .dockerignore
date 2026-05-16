@@ -1,0 +1,36 @@
+# Keep the Fly image small.
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/public/pyodide
+frontend/.vite
+
+# Backend
+backend/.venv
+backend/__pycache__
+backend/**/__pycache__
+backend/coding_bot.db
+backend/coding_bot.db-*
+backend/logs
+
+# Desktop build artifacts (huge)
+desktop
+dist
+build
+.venv-desktop
+
+# Tooling / VCS
+.git
+.github
+.gitignore
+.idea
+.vscode
+.DS_Store
+
+# Docs / screenshots
+docs/images
+*.md
+!README.md
+*.png
+*.jpg

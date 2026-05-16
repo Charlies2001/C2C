@@ -1,0 +1,56 @@
+# Fly.io deployment config for C2C / CodingBot.
+# Bound to https://coding-coach.org via `fly certs create coding-coach.org`.
+#
+# Quick start (full walkthrough in docs/DEPLOY_FLY.md):
+#   fly launch --no-deploy            # creates the app (don't overwrite this file)
+#   fly secrets set DATABASE_URL=...  # see DEPLOY_FLY.md for the full set
+#   fly deploy
+#   fly certs create coding-coach.org
+
+app = "coding-coach"
+primary_region = "nrt"          # Tokyo — best balance for China + APAC. Change if your audience differs.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  SERVE_STATIC_PATH = "/app/frontend_dist"
+  LOG_FORMAT = "json"
+  ALLOW_ENV_KEY_FALLBACK = "false"   # BYOK — never spend platform tokens
+  RATE_LIMIT_AI_PER_USER = "60"
+  RATE_LIMIT_AI_GLOBAL = "500"
+  SEED_LANGUAGE = "zh-CN"
+
+# Secrets (configured via `fly secrets set`, NOT here):
+#   DATABASE_URL      Neon connection string (postgres://... ?sslmode=require)
+#   JWT_SECRET_KEY    `openssl rand -base64 32`
+#   ENCRYPTION_KEY    `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+#   CORS_ORIGINS      https://coding-coach.org
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"     # save free-tier hours when idle
+  auto_start_machines = true
+  min_machines_running = 0            # cold start OK for early traffic; bump to 1 for hot SLA
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 200
+    soft_limit = 150
+
+  # /api/health is the cheapest healthcheck endpoint.
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"                    # bump to "1gb" if you see OOMs under load
+  cpu_kind = "shared"
+  cpus = 1
