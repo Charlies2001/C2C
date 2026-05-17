@@ -118,15 +118,12 @@ html, body, #root {
   animation: slide-up 0.3s ease-out;
 }
 
-/* Teaching mode sweet theme */
+/* Teaching mode — always uses the dark sweet-theme gradient. The rest of the
+ * product is dark, and the teaching panel's prose text is tuned for a dark
+ * background (prose-invert + pink-200 / gray-300). The previous light-theme
+ * branch made the page chrome (titles, buttons) unreadable on light systems. */
 .teaching-theme-bg {
-  background: linear-gradient(135deg, #fdf2f8 0%, #faf5ff 50%, #f0f9ff 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-  .teaching-theme-bg {
-    background: linear-gradient(135deg, #1a0a14 0%, #140a1a 50%, #0a1420 100%);
-  }
+  background: linear-gradient(135deg, #1a0a14 0%, #140a1a 50%, #0a1420 100%);
 }
 
 .teaching-blackboard {

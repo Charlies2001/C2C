@@ -479,23 +479,11 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
                     {activeSection.title === 'practice' ? (
                       <GuidedCoding content={displayContent} isStreaming={isCurrentStreaming} />
                     ) : isCurrentStreaming ? (
-                      streamingPreview ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="inline-block w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-                            {t('blackboard.generatingChapter', {
-                              current: currentSection + 1,
-                              total: totalSections,
-                              title: getSectionDisplayTitle(activeSection.title),
-                            })}
-                          </div>
-                          <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed max-h-[60vh] overflow-auto">
-                            {streamingPreview}
-                          </pre>
-                        </div>
-                      ) : (
-                        <GeneratingWaitScreen title={getSectionDisplayTitle(activeSection.title)} />
-                      )
+                      // Cover the streaming text behind a wait screen — the original
+                      // teaching-mode spec is "hide raw stream, only reveal the
+                      // formatted lesson once generation completes." Showing the
+                      // half-formed markdown live broke that pedagogical intent.
+                      <GeneratingWaitScreen title={getSectionDisplayTitle(activeSection.title)} />
                     ) : displayContent ? (
                       <div className={PROSE_CLASSES}>
                         {renderedMarkdown}
