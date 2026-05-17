@@ -69,6 +69,10 @@ export default function LandingPage() {
         <div className="landing-glow landing-glow-3" />
 
         <div className="relative z-10 text-center px-6 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full text-xs font-medium bg-violet-500/10 border border-violet-400/25 text-violet-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            {t('landing.heroPill')}
+          </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight mb-6">
             <span className="text-white">{t('landing.heroTitle1')}</span>
             <br />
@@ -76,14 +80,13 @@ export default function LandingPage() {
               {t('landing.heroTitle2')}
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-4">
+          <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10">
             {t('landing.heroSubtitle')}
             <br className="hidden sm:inline" />
             {t('landing.heroSubtitle2')}
           </p>
-          <p className="text-sm text-gray-500 mb-10">{t('landing.heroTagline')}</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
             <Link
               to="/problems"
               className="inline-flex items-center gap-2 px-7 py-3 text-base font-semibold text-white bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 rounded-2xl transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105"
@@ -105,6 +108,8 @@ export default function LandingPage() {
               {t('landing.viewSource')}
             </a>
           </div>
+
+          <p className="text-xs text-gray-600 tracking-wide max-w-2xl mx-auto">{t('landing.heroTagline')}</p>
         </div>
       </section>
 
