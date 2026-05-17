@@ -63,7 +63,7 @@ export default function LandingPage() {
   return (
     <div className="w-full">
       {/* ─── Hero ─────────────────────────────────────────────── */}
-      <section className="relative min-h-[calc(100vh-48px)] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[calc(100vh-48px)] flex items-center justify-center overflow-hidden landing-grid-bg">
         <div className="landing-glow landing-glow-1" />
         <div className="landing-glow landing-glow-2" />
         <div className="landing-glow landing-glow-3" />
