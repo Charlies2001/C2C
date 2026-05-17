@@ -132,6 +132,14 @@ export default function AuthPage() {
             >
               {loading ? '处理中...' : isLogin ? '登录' : '注册'}
             </button>
+
+            {isLogin && (
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-xs text-gray-500 hover:text-violet-300 transition-colors">
+                  忘记密码？
+                </Link>
+              </div>
+            )}
           </form>
 
           {!isLogin && (

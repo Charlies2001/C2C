@@ -8,8 +8,11 @@ from ..models.user import User
 from ..auth import (
     hash_password, verify_password,
     create_access_token, create_refresh_token, _decode_token,
+    create_password_reset_token, decode_password_reset_token,
     get_current_user, encrypt_api_key, decrypt_api_key,
 )
+from ..config import settings
+from ..email import EmailSendError, render_password_reset_email, send_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -29,6 +32,15 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -113,6 +125,56 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user or not verify_password(req.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="邮箱或密码错误")
+
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+    )
+
+
+@router.post("/forgot-password", status_code=200)
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Trigger a password reset email.
+
+    Always returns 200 with the same message — never reveals whether the email
+    is registered. Silently no-ops if Resend isn't configured or send fails;
+    the user side cannot distinguish these from "email not registered".
+    """
+    user = db.query(User).filter(User.email == req.email).first()
+    if user:
+        try:
+            token = create_password_reset_token(user.id, user.hashed_password)
+            reset_url = f"{settings.APP_BASE_URL.rstrip('/')}/reset-password?token={token}"
+            html, text = render_password_reset_email(reset_url, user.nickname or user.email)
+            send_email(user.email, "重置 CodingBot 密码", html, text)
+        except EmailSendError:
+            # Swallowed deliberately — see docstring.
+            pass
+    return {"detail": "如果该邮箱已注册，我们已向其发送重置链接。请检查收件箱（包含垃圾邮件文件夹）。"}
+
+
+@router.post("/reset-password", response_model=TokenResponse)
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Consume a reset token and set a new password. Auto-logs in on success."""
+    # We need to load the user first to check token binding. The token's "sub"
+    # gives us the user_id, but we must decode WITH the current hash. So:
+    # 1. peek at sub (unverified) to find user
+    # 2. fully verify token bound to that user's current hash
+    try:
+        from jose import jwt as _jwt
+        peek = _jwt.get_unverified_claims(req.token)
+        user_id = int(peek.get("sub") or 0)
+    except Exception:
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+
+    decode_password_reset_token(req.token, user.hashed_password)  # raises 400 on mismatch
+
+    user.hashed_password = hash_password(req.new_password)
+    db.commit()
 
     return TokenResponse(
         access_token=create_access_token(user.id),

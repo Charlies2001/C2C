@@ -11,3 +11,4 @@ cryptography>=42.0.0
 psycopg2-binary>=2.9.0
 alembic>=1.13.0
 email-validator>=2.0.0
+httpx>=0.27.0

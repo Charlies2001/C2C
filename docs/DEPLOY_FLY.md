@@ -65,6 +65,17 @@ fly secrets set ENCRYPTION_KEY="$(python3 -c 'from cryptography.fernet import Fe
 
 # 允许的前端来源
 fly secrets set CORS_ORIGINS="https://coding-coach.org,https://www.coding-coach.org"
+
+# 找回密码邮件 — Resend
+# 通过 fly secrets set RESEND_API_KEY -a coding-coach 单独交互式输入，避免 token 写在脚本里
+# RESEND_API_KEY="re_xxxxxxxx"
+# EMAIL_FROM 必须是 Resend 已验证的发送方：
+#   未验证 DNS → 暂时用 "CodingBot <onboarding@resend.dev>"（只能发给注册 Resend 的邮箱）
+#   验证自有域名后 → "CodingBot <noreply@coding-coach.org>"
+fly secrets set EMAIL_FROM="CodingBot <onboarding@resend.dev>"
+
+# APP_BASE_URL 用于拼装重置密码邮件里的链接
+fly secrets set APP_BASE_URL="https://coding-coach.org"
 ```
 
 > Secrets 在 Fly 后台是加密的，跑容器时通过环境变量注入。**绝对不要把这些写进 fly.toml 或 git 提交**。
@@ -72,7 +83,8 @@ fly secrets set CORS_ORIGINS="https://coding-coach.org,https://www.coding-coach.
 验证：
 ```bash
 fly secrets list
-# 应该看到 4 个 key：DATABASE_URL / JWT_SECRET_KEY / ENCRYPTION_KEY / CORS_ORIGINS
+# 应该看到：DATABASE_URL / JWT_SECRET_KEY / ENCRYPTION_KEY / CORS_ORIGINS
+#         + RESEND_API_KEY / EMAIL_FROM / APP_BASE_URL
 ```
 
 ---

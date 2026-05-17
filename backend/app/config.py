@@ -41,6 +41,15 @@ class Settings:
     # back to <dir>/index.html for SPA routes.
     SERVE_STATIC_PATH: str = os.getenv("SERVE_STATIC_PATH", "")
 
+    # Email (Resend) — used for password reset.
+    # If RESEND_API_KEY is empty, /forgot-password silently no-ops (still returns 200
+    # to avoid email enumeration). EMAIL_FROM must be a Resend-verified sender;
+    # onboarding@resend.dev works for testing but can only deliver to the email
+    # you registered Resend with.
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "CodingBot <onboarding@resend.dev>")
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:5173")
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json | text

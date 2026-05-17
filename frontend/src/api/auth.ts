@@ -122,6 +122,37 @@ export async function login(email: string, password: string): Promise<TokenPair>
   return tokens;
 }
 
+export async function requestPasswordReset(email: string): Promise<string> {
+  // Endpoint always returns 200 — message is identical whether email is
+  // registered or not (anti-enumeration).
+  const res = await fetch(`${BASE_URL}/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || '请求失败，请稍后重试');
+  }
+  const data = await res.json();
+  return data.detail as string;
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<TokenPair> {
+  const res = await fetch(`${BASE_URL}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || '重置失败');
+  }
+  const tokens: TokenPair = await res.json();
+  saveTokens(tokens);
+  return tokens;
+}
+
 export async function fetchMe(): Promise<UserInfo> {
   const res = await authFetch(`${BASE_URL}/me`);
   if (!res.ok) throw new Error('未登录');

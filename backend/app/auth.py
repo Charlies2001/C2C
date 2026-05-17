@@ -61,6 +61,54 @@ def create_refresh_token(user_id: int) -> str:
     )
 
 
+# ─── Password reset tokens ───
+# Short-lived (15 min) JWT bound to the user's current password hash. After a
+# successful reset the hash changes, so any prior reset token is no longer
+# decodable — gives us "single-use" semantics without a DB-side token table.
+
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = 15
+_PASSWORD_HASH_BINDING_LEN = 16
+
+
+def _hash_binding(hashed_password: str) -> str:
+    return hashed_password[-_PASSWORD_HASH_BINDING_LEN:]
+
+
+def create_password_reset_token(user_id: int, hashed_password: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "exp": expire,
+            "type": "password_reset",
+            "ph": _hash_binding(hashed_password),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def decode_password_reset_token(token: str, current_hashed_password: str) -> int:
+    """Return user_id if the token is valid AND still bound to current_hashed_password.
+
+    Raises HTTPException(400) for any failure — we don't differentiate causes,
+    so attackers can't probe which side (token / hash) is wrong.
+    """
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+    if payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+    if payload.get("ph") != _hash_binding(current_hashed_password):
+        # User changed password (or already used this token) — invalidates.
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(status_code=400, detail="链接已过期或无效，请重新申请")
+    return int(sub)
+
+
 def _decode_token(token: str, expected_type: str) -> int:
     """Decode and validate JWT. Returns user_id or raises HTTPException."""
     try:

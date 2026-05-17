@@ -106,6 +106,18 @@ check "refresh returns new access_token" \
 check "access token used as refresh returns 401" \
     bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/refresh' -H 'Content-Type: application/json' -d '{\"refresh_token\":\"$ACCESS\"}') == '401' ]]"
 
+# ─── 3b. Forgot password / reset password ───
+echo "▶ forgot/reset password"
+# /forgot-password always returns 200 to avoid email enumeration. RESEND_API_KEY
+# is not set in CI, so the email send silently no-ops — the endpoint still
+# confirms the request was accepted.
+check "forgot-password for registered email returns 200" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/forgot-password' -H 'Content-Type: application/json' -d '{\"email\":\"int@test.com\"}') == '200' ]]"
+check "forgot-password for unknown email also returns 200 (anti-enumeration)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/forgot-password' -H 'Content-Type: application/json' -d '{\"email\":\"nobody@test.com\"}') == '200' ]]"
+check "reset-password with garbage token returns 400" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X POST '$BASE/api/auth/reset-password' -H 'Content-Type: application/json' -d '{\"token\":\"not-a-jwt\",\"new_password\":\"newpass\"}') == '400' ]]"
+
 # ─── 4. API Key encryption ───
 echo "▶ api key (Fernet encryption)"
 curl -sS -X PUT "$BASE/api/auth/api-key" \
