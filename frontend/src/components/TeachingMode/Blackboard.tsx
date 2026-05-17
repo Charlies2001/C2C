@@ -171,8 +171,6 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
   const [generatingIndex, setGeneratingIndex] = useState(-1);
   const accRef = useRef('');
   const doneIndexRef = useRef(0);
-  const [streamingPreview, setStreamingPreview] = useState('');
-  const previewTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapsible sections
   const [collapsedMap, setCollapsedMap] = useState<Record<number, boolean>>({});
@@ -221,7 +219,6 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
       abortRef.current = abort;
 
       accRef.current = '';
-      setStreamingPreview('');
       setGeneratingIndex(index);
       setIsTeachingLoading(true);
       setCurrentSection(index);
@@ -233,35 +230,21 @@ export default function Blackboard({ onGoToCoding }: { onGoToCoding: () => void 
         context,
         index,
         (chunk) => {
+          // Accumulate into a ref — no UI re-render during stream. The cover
+          // (GeneratingWaitScreen) hides the raw stream by design; the
+          // formatted markdown only renders once onDone commits accRef to
+          // the store.
           accRef.current += chunk;
-          // Throttled UI update (~5fps) so user sees streaming progress
-          // without re-rendering the heavy markdown tree on every chunk.
-          if (!previewTickRef.current) {
-            previewTickRef.current = setTimeout(() => {
-              previewTickRef.current = null;
-              setStreamingPreview(accRef.current);
-            }, 200);
-          }
         },
         () => {
-          if (previewTickRef.current) {
-            clearTimeout(previewTickRef.current);
-            previewTickRef.current = null;
-          }
           useStore.getState().updateSectionContent(doneIndexRef.current, accRef.current);
-          setStreamingPreview('');
           setGeneratingIndex(-1);
           useStore.getState().setIsTeachingLoading(false);
           useStore.getState().saveTeaching();
         },
         (error) => {
-          if (previewTickRef.current) {
-            clearTimeout(previewTickRef.current);
-            previewTickRef.current = null;
-          }
           useStore.getState().updateSectionContent(index, accRef.current);
           console.error(`Teaching section ${index} error:`, error);
-          setStreamingPreview('');
           setGeneratingIndex(-1);
           useStore.getState().setIsTeachingLoading(false);
         },
