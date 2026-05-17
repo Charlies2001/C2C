@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '../api/auth';
-import { useAuthStore } from '../store/useAuthStore';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const token = params.get('token') || '';
-  const init = useAuthStore((s) => s.init);
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -30,9 +28,9 @@ export default function ResetPasswordPage() {
     setLoading(true);
     try {
       await resetPassword(token, password);
-      // resetPassword saved tokens; re-init store to pick up the new user.
-      await init();
-      navigate('/problems');
+      // Send the user back to the login page; we intentionally do not
+      // auto-log them in so they confirm they remember the new password.
+      navigate('/auth', { state: { passwordReset: true } });
     } catch (err) {
       setError(err instanceof Error ? err.message : '重置失败');
     } finally {
@@ -99,7 +97,7 @@ export default function ResetPasswordPage() {
               disabled={loading || !password || !confirm}
               className="w-full py-2.5 text-sm font-medium text-white bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '提交中…' : '设置新密码并登录'}
+              {loading ? '提交中…' : '设置新密码'}
             </button>
           </form>
         </div>

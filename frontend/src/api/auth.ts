@@ -138,7 +138,10 @@ export async function requestPasswordReset(email: string): Promise<string> {
   return data.detail as string;
 }
 
-export async function resetPassword(token: string, newPassword: string): Promise<TokenPair> {
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  // The backend still returns a TokenPair on success but we intentionally
+  // discard it — we want the user to log in again with the new password so
+  // they confirm they remember it.
   const res = await fetch(`${BASE_URL}/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -148,9 +151,6 @@ export async function resetPassword(token: string, newPassword: string): Promise
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || '重置失败');
   }
-  const tokens: TokenPair = await res.json();
-  saveTokens(tokens);
-  return tokens;
 }
 
 export async function fetchMe(): Promise<UserInfo> {

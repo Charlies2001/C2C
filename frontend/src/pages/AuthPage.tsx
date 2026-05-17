@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -11,6 +12,11 @@ export default function AuthPage() {
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Banner shown after successful password reset — comes from
+  // ResetPasswordPage via router state, dismissed when user starts typing.
+  const justReset = (location.state as { passwordReset?: boolean } | null)?.passwordReset === true;
+  const [showResetBanner, setShowResetBanner] = useState(justReset);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +51,12 @@ export default function AuthPage() {
               : '注册解锁 AI 教学 / 助教 / 提示，多设备同步笔记和刷题记录。'}
           </p>
         </div>
+
+        {showResetBanner && (
+          <div className="mb-4 px-4 py-3 bg-emerald-900/20 border border-emerald-700/30 rounded-xl text-sm text-emerald-200 leading-relaxed">
+            ✓ 密码已重置，请用新密码登录。
+          </div>
+        )}
 
         <div className="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
           {/* Tab switcher */}
@@ -99,7 +111,7 @@ export default function AuthPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); if (showResetBanner) setShowResetBanner(false); }}
                 required
                 className="w-full px-3 py-2.5 bg-gray-950/60 border border-white/[0.06] rounded-xl text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-colors"
                 placeholder="email@example.com"
