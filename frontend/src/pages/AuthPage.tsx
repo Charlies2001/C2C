@@ -48,10 +48,13 @@ export default function AuthPage() {
 
         <div className="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-white/[0.06] p-6">
           {/* Tab switcher */}
-          <div className="flex mb-6 bg-gray-800/50 rounded-xl p-1">
+          <div role="tablist" aria-label="登录或注册" className="flex mb-6 bg-gray-800/50 rounded-xl p-1">
             <button
+              role="tab"
+              type="button"
+              aria-selected={isLogin}
               onClick={() => { setIsLogin(true); setError(''); }}
-              className={`flex-1 py-2 text-sm rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
                 isLogin
                   ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white'
                   : 'text-gray-400 hover:text-gray-200'
@@ -60,8 +63,11 @@ export default function AuthPage() {
               登录
             </button>
             <button
+              role="tab"
+              type="button"
+              aria-selected={!isLogin}
               onClick={() => { setIsLogin(false); setError(''); }}
-              className={`flex-1 py-2 text-sm rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
                 !isLogin
                   ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white'
                   : 'text-gray-400 hover:text-gray-200'

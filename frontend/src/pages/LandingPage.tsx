@@ -233,6 +233,16 @@ export default function LandingPage() {
           </svg>
         </Link>
       </section>
+
+      {/* ─── Footer ──────────────────────────────────────────── */}
+      <footer className="relative border-t border-white/[0.06] py-6 px-6">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-500">
+          <Link to="/privacy" className="hover:text-gray-300 transition-colors">隐私政策</Link>
+          <Link to="/terms" className="hover:text-gray-300 transition-colors">服务条款</Link>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="hover:text-gray-300 transition-colors">GitHub</a>
+          <span className="text-gray-600">MIT License · BYOK · Open Source</span>
+        </div>
+      </footer>
     </div>
   );
 }

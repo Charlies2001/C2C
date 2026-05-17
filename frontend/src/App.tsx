@@ -6,6 +6,8 @@ import ProblemListPage from './pages/ProblemListPage';
 import ProblemPage from './pages/ProblemPage';
 import AuthPage from './pages/AuthPage';
 import NotebookDetailPage from './pages/NotebookDetailPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginGate from './components/LoginGate';
 import { useAuthStore } from './store/useAuthStore';
@@ -52,6 +54,8 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             {/* 题目列表和题目页支持游客访问：浏览、Pyodide 运行代码都不要后端。
                 AI 相关功能（助教、提示、教学、出题）在前端会拦截未登录态弹登录引导。 */}
             <Route path="/problems" element={<ProblemListPage />} />

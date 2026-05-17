@@ -256,8 +256,38 @@ fly scale count 1 --region hkg            # 加香港，更靠近大陆
 
 ## 10. 下次更新代码
 
+### 推荐：GitHub Actions 自动部署（CI 通过即上线）
+
+仓库已配置 `.github/workflows/ci.yml` 中的 `deploy` job：每次 push 到 `main`，
+等 pytest + 前端 build + Playwright e2e 全部通过后，自动跑 `flyctl deploy`。
+
+**一次性配置**：
+
 ```bash
-git push origin main      # 同步到 GitHub（习惯动作）
+# 1. 在本地用 flyctl 生成一个长期 token（不要用 fly auth token，那是个人 token，
+#    范围太大）。-x 控制过期时间，例如 8760h ≈ 1 年。
+fly tokens create deploy -x 8760h -a coding-coach
+
+# 2. 把输出（FlyV1 fm2_...）复制到 GitHub：
+#    Settings → Secrets and variables → Actions → New repository secret
+#    Name: FLY_API_TOKEN
+#    Value: <粘贴 token>
+```
+
+配置完成后，日常发布只需：
+
+```bash
+git push origin main      # CI 自动跑测试 + 自动 deploy
+```
+
+可以在 GitHub Actions 页面看到 deploy 进度，Fly 会照常做 rolling restart。
+
+### 应急：本地手动部署
+
+CI 挂了 / 想跳过测试快速回滚时：
+
+```bash
+git push origin main      # 习惯动作
 fly deploy                # 让 Fly 拉最新代码 + build + rolling restart
 ```
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
@@ -16,6 +17,16 @@ export default function LoginGate() {
   const loginGateMessage = useAuthStore((s) => s.loginGateMessage);
   const closeLoginGate = useAuthStore((s) => s.closeLoginGate);
 
+  // Close on Escape — standard modal behavior.
+  useEffect(() => {
+    if (!showLoginGate) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLoginGate();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showLoginGate, closeLoginGate]);
+
   if (!showLoginGate) return null;
 
   const goAuth = () => {
@@ -29,14 +40,17 @@ export default function LoginGate() {
       onClick={closeLoginGate}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="login-gate-title"
         className="relative bg-gray-900/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-white/[0.08] p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-4">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 mb-3">
-            <span className="text-2xl">🔓</span>
+            <span className="text-2xl" aria-hidden="true">🔓</span>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-1.5">
+          <h3 id="login-gate-title" className="text-lg font-semibold text-white mb-1.5">
             {t('loginGate.title')}
           </h3>
           <p className="text-sm text-gray-400">

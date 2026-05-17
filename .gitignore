@@ -9,6 +9,8 @@ __pycache__/
 .venv/
 .vscode/
 *.db
+*.db-shm
+*.db-wal
 *.egg-info/
 *.log
 *.pyc
