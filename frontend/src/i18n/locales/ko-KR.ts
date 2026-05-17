@@ -194,8 +194,8 @@ const koKR = {
   },
 
   landing: {
-    heroTitle1: '답을 알려주지 않는',
-    heroTitle2: 'AI 코딩 튜터',
+    heroTitle1: '처음부터 함께 알고리즘을 배우는',
+    heroTitle2: 'AI 파트너',
     heroSubtitle: '인내심 있는 선생님처럼 곁에서 — 당신의 코드를 읽고, 어디서 막혔는지 알아보고,',
     heroSubtitle2: '계속 나아갈 만큼의 힌트만 주어 스스로 풀게 합니다.',
     heroTagline: '오픈소스 · 본인 API Key 사용 · 완전 무료',

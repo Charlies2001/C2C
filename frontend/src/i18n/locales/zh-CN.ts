@@ -210,8 +210,8 @@ const zhCN = {
 
   // Landing page
   landing: {
-    heroTitle1: '不告诉你答案的',
-    heroTitle2: 'AI 编程导师',
+    heroTitle1: '帮助你从 0 开始学编程算法的',
+    heroTitle2: 'AI 伙伴',
     heroSubtitle: '像一位耐心的老师陪在你身边——它会读懂你的代码、看出你卡在哪里，',
     heroSubtitle2: '一点点给你提示，让你自己解出每一题。',
     heroTagline: '开源 · 用你自己的 API Key · 完全免费',

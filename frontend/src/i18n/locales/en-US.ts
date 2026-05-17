@@ -194,8 +194,8 @@ const enUS = {
   },
 
   landing: {
-    heroTitle1: 'The AI coding tutor',
-    heroTitle2: "that won't give you the answer",
+    heroTitle1: 'Learn coding & algorithms from scratch — with',
+    heroTitle2: 'an AI partner by your side',
     heroSubtitle: "Like a patient teacher by your side — it reads your code, sees where you're stuck,",
     heroSubtitle2: 'and drops just enough hints so you solve each problem yourself.',
     heroTagline: 'Open-source · Your own API key · Free',

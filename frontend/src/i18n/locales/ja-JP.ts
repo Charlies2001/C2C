@@ -194,8 +194,8 @@ const jaJP = {
   },
 
   landing: {
-    heroTitle1: '答えを教えない',
-    heroTitle2: 'AI プログラミング講師',
+    heroTitle1: 'ゼロから一緒にアルゴリズムを学ぶ',
+    heroTitle2: 'AI パートナー',
     heroSubtitle: '忍耐強い先生のように寄り添い、あなたのコードを読み、どこで詰まっているか見抜いて、',
     heroSubtitle2: '次の一歩に必要なヒントだけを与え、自分で解かせます。',
     heroTagline: 'オープンソース · 自分の API Key で利用 · 完全無料',
