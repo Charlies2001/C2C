@@ -4,6 +4,11 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: #050505;
+  /* Tell the browser the entire app is dark so user-agent chrome
+   * (scrollbars, default focus rings, form controls, autofill flash)
+   * stays dark even on light system themes. */
+  color-scheme: dark;
 }
 
 /* Custom scrollbar */
