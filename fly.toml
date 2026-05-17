@@ -46,10 +46,13 @@ primary_region = "syd"          # Sydney — owner is in Sydney, so dev/test/dem
     soft_limit = 150
 
   # /api/health is the cheapest healthcheck endpoint.
+  # grace_period bumped from 10s to 30s: on shared-cpu-1x with 512MB, cold
+  # boot (alembic migrations + uvicorn startup) can run 10–20s and a 10s
+  # grace caused at least one deploy rollout to fail health checks on syd.
   [[http_service.checks]]
     interval = "30s"
     timeout = "5s"
-    grace_period = "10s"
+    grace_period = "30s"
     method = "GET"
     path = "/api/health"
 
