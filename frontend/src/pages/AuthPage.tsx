@@ -45,6 +45,7 @@ export default function AuthPage() {
             C2C
           </h1>
           <p className="text-gray-500 text-sm mt-1">Coding to Creating</p>
+          <p className="text-gray-600 text-[11px] mt-0.5 tracking-wide">by shiningwood · 烁楠</p>
           <p className="text-xs text-gray-400 mt-3 leading-relaxed px-4">
             {isLogin
               ? '欢迎回来。登录后即可使用 AI 助教、教学、提示等功能。'

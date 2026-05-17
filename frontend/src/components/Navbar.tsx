@@ -40,7 +40,7 @@ export default function Navbar() {
           <span className="text-lg font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
             C2C
           </span>
-          <span className="text-xs text-gray-500 hidden sm:inline">Coding to Creating</span>
+          <span className="text-xs text-gray-500 hidden sm:inline">Coding to Creating · by shiningwood</span>
         </Link>
 
         <div className="ml-6 flex items-center gap-4">
