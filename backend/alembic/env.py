@@ -23,8 +23,14 @@ config = context.config
 # Override sqlalchemy.url from environment (DATABASE_URL takes precedence over alembic.ini)
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# NOTE: we intentionally do NOT call fileConfig() here even though the
+# alembic.ini has [loggers]/[handlers]/[formatters] sections. fileConfig
+# (with the default disable_existing_loggers=True) destroys the
+# RotatingFileHandler we attached to the root logger in setup_logging(),
+# which silently breaks JSON request logs on every server restart.
+# Alembic's own log records propagate up to root and pick up our JSON
+# formatter just fine without this.
+_ = fileConfig  # keep the import to make the silenced step obvious to readers
 
 target_metadata = Base.metadata
 
