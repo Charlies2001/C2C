@@ -21,6 +21,25 @@ from .services.ai_service import _anthropic_clients, _openai_clients
 setup_logging()
 logger = logging.getLogger("codingbot")
 
+# Sentry must init BEFORE the FastAPI app is constructed so its
+# auto-instrumentation hooks the routing layer. Skipped entirely when
+# SENTRY_DSN is empty (dev / self-host without Sentry).
+if settings.SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.SENTRY_ENVIRONMENT,
+        # Free plan covers errors only; skip perf + profiling tracing to stay
+        # well under the 5k events/month limit.
+        traces_sample_rate=0.0,
+        profiles_sample_rate=0.0,
+        # Don't auto-attach request bodies / cookies / headers — too easy to
+        # leak api keys or auth tokens that way. Errors only.
+        send_default_pii=False,
+    )
+    sentry_sdk.set_tag("component", "backend")
+    logger.info("sentry initialized")
+
 
 def _get_localized_seeds(language: str) -> list[dict]:
     """Return seed problems localized to the given language."""

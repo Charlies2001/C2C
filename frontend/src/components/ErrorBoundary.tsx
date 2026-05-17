@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,12 @@ export default class ErrorBoundary extends Component<Props, State> {
     this.setState({ errorInfo });
     // Surface to console so dev / user-with-devtools can copy.
     console.error('[ErrorBoundary] caught:', error, errorInfo);
+    // And to Sentry (no-op when DSN not configured, e.g. dev builds).
+    Sentry.withScope((scope) => {
+      scope.setTag('scope', this.props.scope || 'app');
+      scope.setContext('react', { componentStack: errorInfo.componentStack });
+      Sentry.captureException(error);
+    });
   }
 
   handleReset = () => {

@@ -50,6 +50,11 @@ class Settings:
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "CodingBot <onboarding@resend.dev>")
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:5173")
 
+    # Sentry — error reporting. Empty value disables Sentry init entirely
+    # (useful for local dev / self-hosters who don't want to send errors anywhere).
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
+    SENTRY_ENVIRONMENT: str = os.getenv("SENTRY_ENVIRONMENT", "production")
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json | text
