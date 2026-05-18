@@ -78,8 +78,11 @@ check "GET /api/health returns 200" \
 echo "▶ schema & seed"
 check "alembic_version row present" \
     bash -c "sqlite3 '$DB' 'SELECT COUNT(*) FROM alembic_version' | grep -q '^1$'"
-check "10 seed problems loaded" \
-    bash -c "sqlite3 '$DB' 'SELECT COUNT(*) FROM problems' | grep -q '^10$'"
+# Don't hardcode the exact seed count — every seed addition would otherwise
+# require a CI lockstep update. Just assert "at least 10" to catch the
+# regression case (seed loader failed entirely).
+check "≥10 seed problems loaded" \
+    bash -c "[[ \$(sqlite3 '$DB' 'SELECT COUNT(*) FROM problems') -ge 10 ]]"
 
 # ─── 3. Auth ───
 echo "▶ auth"
@@ -157,8 +160,8 @@ curl -sS -X DELETE "$BASE/api/auth/api-keys/$KID2" -H "Authorization: Bearer $AC
 
 # ─── 5. Problems CRUD ───
 echo "▶ problems CRUD"
-check "GET /api/problems/ returns 10 seed items" \
-    bash -c "[[ \$(curl -sS '$BASE/api/problems/' | jq 'length') == '10' ]]"
+check "GET /api/problems/ returns ≥10 seed items" \
+    bash -c "[[ \$(curl -sS '$BASE/api/problems/' | jq 'length') -ge 10 ]]"
 check "GET /api/problems/1 returns title" \
     bash -c "curl -sS '$BASE/api/problems/1' | jq -e '.title' > /dev/null"
 check "GET /api/problems/9999 returns 404" \
