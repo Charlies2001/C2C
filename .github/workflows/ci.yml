@@ -140,6 +140,16 @@ jobs:
 
       - name: Deploy to Fly.io
         if: steps.check_token.outputs.skip == 'false'
-        run: flyctl deploy --remote-only
+        # VITE_SENTRY_DSN and VITE_CF_BEACON are passed as Docker build args
+        # so they end up baked into the frontend bundle at build time.
+        # If a secret isn't set in this repo, the corresponding feature is
+        # silently disabled — forks deploying their own copy get a clean
+        # frontend with no telemetry pointing at coding-coach.org.
+        run: |
+          flyctl deploy --remote-only \
+            --build-arg VITE_SENTRY_DSN="$VITE_SENTRY_DSN" \
+            --build-arg VITE_CF_BEACON="$VITE_CF_BEACON"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_CF_BEACON: ${{ secrets.VITE_CF_BEACON }}
