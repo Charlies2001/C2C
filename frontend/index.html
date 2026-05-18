@@ -30,8 +30,8 @@
 
     <link rel="canonical" href="https://coding-coach.org/" />
 
-    <!-- Cloudflare Web Analytics (RUM, privacy-friendly, no cookies) -->
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "9419ae8520a04e8abfadec2a9f9aacc2"}'></script>
+    <!-- Cloudflare Web Analytics is injected at runtime by main.tsx if
+         VITE_CF_BEACON was set at build time. See main.tsx for the gate. -->
   </head>
   <body>
     <div id="root"></div>

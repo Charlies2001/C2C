@@ -13,6 +13,17 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /build
 
+# Build-time public values (Sentry DSN, Cloudflare beacon token).
+# Both are "public secrets" — they end up in the browser bundle anyway, but
+# we still pass them via build args so forks don't accidentally inherit
+# coding-coach.org's Sentry/CF analytics. Forks get empty defaults → no
+# telemetry. The owner sets them in GitHub repo secrets, CI passes via
+# --build-arg.
+ARG VITE_SENTRY_DSN=""
+ARG VITE_CF_BEACON=""
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN \
+    VITE_CF_BEACON=$VITE_CF_BEACON
+
 # Cache deps layer
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
