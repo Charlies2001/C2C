@@ -64,6 +64,30 @@ export interface ExecutionResult {
   error: string | null;
 }
 
+// One-shot worker request helper — pendingRequests' callback is single-fire
+// (current router deletes on first message).
+function sendWorker<T = any>(type: string, payload: Record<string, unknown>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = nextRequestId++;
+    pendingRequests.set(id, (msg) => {
+      if (msg.type === 'init_error') reject(new Error(msg.error || 'worker init failed'));
+      else resolve(msg as T);
+    });
+    try {
+      worker!.postMessage({ type, id, ...payload });
+    } catch (e: any) {
+      pendingRequests.delete(id);
+      reject(e);
+    }
+  });
+}
+
+interface PreparedMessage {
+  type: 'prepared';
+  loaded: string[];
+  error?: string;
+}
+
 export async function runPythonCode(
   code: string,
   helperCode: string = '',
@@ -71,6 +95,20 @@ export async function runPythonCode(
 ): Promise<ExecutionResult> {
   await initPyodide();
 
+  // ─── Phase 1: prepare (scan imports, auto-load Pyodide packages) ───
+  // No timeout — first-time numpy/pandas load can take 5-15s and shouldn't
+  // be killed as if it were a runaway loop.
+  let prepared: PreparedMessage;
+  try {
+    prepared = await sendWorker<PreparedMessage>('prepare', { code, helperCode });
+  } catch (e: any) {
+    return { stdout: '', stderr: '', error: e?.message || 'prepare failed' };
+  }
+  if (prepared.error) {
+    return { stdout: '', stderr: '', error: prepared.error };
+  }
+
+  // ─── Phase 2: run (timed) ───
   return new Promise<ExecutionResult>((resolve) => {
     const id = nextRequestId++;
     let settled = false;
