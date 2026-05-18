@@ -245,8 +245,8 @@ export default function LandingPage() {
           <Link to="/privacy" className="hover:text-gray-300 transition-colors">隐私政策</Link>
           <Link to="/terms" className="hover:text-gray-300 transition-colors">服务条款</Link>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="hover:text-gray-300 transition-colors">GitHub</a>
-          <span className="text-gray-600">MIT License · BYOK · Open Source</span>
-          <span className="text-gray-600">· by shiningwood (烁楠)</span>
+          <a href="mailto:shiningwood2026@shining-wood.com" className="hover:text-gray-300 transition-colors">反馈邮箱</a>
+          <span className="text-gray-600">MIT License · BYOK · Open Source · by shiningwood</span>
         </div>
       </footer>
     </div>
