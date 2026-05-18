@@ -636,5 +636,831 @@ class TreeNode:
             # 多种硬币组合
             {"input": "coins = [3, 7]\namount = 12\nprint(coin_change(coins, amount))", "expected": "4"},
         ]
+    },
+    # ─── 第 11 题：反转字符串 ───
+    {
+        "title": "反转字符串",
+        "slug": "reverse-string",
+        "difficulty": "Easy",
+        "category": "双指针",
+        "description": """## 反转字符串
+
+编写一个函数，**原地**反转输入的字符串数组 `s`。
+
+不要给另外的数组分配额外的空间，你必须原地修改输入数组、使用 O(1) 的额外空间解决这一问题。
+
+### 示例
+
+```
+输入：s = ["h","e","l","l","o"]
+输出：["o","l","l","e","h"]
+```
+
+### 提示
+- `1 <= s.length <= 10^5`
+- 使用双指针，一前一后向中间靠拢""",
+        "starter_code": "def reverse_string(s):\n    # 原地修改 s（不要 return）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "s = ['h','e','l','l','o']\nreverse_string(s)\nprint(s)", "expected": "['o', 'l', 'l', 'e', 'h']"},
+            {"input": "s = ['H','a','n','n','a','h']\nreverse_string(s)\nprint(s)", "expected": "['h', 'a', 'n', 'n', 'a', 'H']"},
+            {"input": "s = ['a']\nreverse_string(s)\nprint(s)", "expected": "['a']"},
+            {"input": "s = ['a','b']\nreverse_string(s)\nprint(s)", "expected": "['b', 'a']"},
+            {"input": "s = ['1','2','3','4','5','6']\nreverse_string(s)\nprint(s)", "expected": "['6', '5', '4', '3', '2', '1']"},
+            {"input": "s = list('abcdefg')\nreverse_string(s)\nprint(s)", "expected": "['g', 'f', 'e', 'd', 'c', 'b', 'a']"},
+        ]
+    },
+    # ─── 第 12 题：罗马数字转整数 ───
+    {
+        "title": "罗马数字转整数",
+        "slug": "roman-to-integer",
+        "difficulty": "Easy",
+        "category": "字符串",
+        "description": """## 罗马数字转整数
+
+罗马数字包含以下七种字符：`I, V, X, L, C, D, M`，分别表示 1, 5, 10, 50, 100, 500, 1000。
+
+通常情况下，罗马数字中小的数字在大的数字的右边。但也存在 6 种特例：
+- I 可以放在 V (5) 和 X (10) 的左边，表示 4 和 9
+- X 可以放在 L (50) 和 C (100) 的左边，表示 40 和 90
+- C 可以放在 D (500) 和 M (1000) 的左边，表示 400 和 900
+
+给定一个罗马数字，将其转换成整数。
+
+### 示例
+
+```
+输入：s = "III"      输出：3
+输入：s = "IV"       输出：4
+输入：s = "IX"       输出：9
+输入：s = "LVIII"    输出：58  (L=50, V=5, III=3)
+输入：s = "MCMXCIV"  输出：1994 (M=1000, CM=900, XC=90, IV=4)
+```""",
+        "starter_code": "def roman_to_int(s):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(roman_to_int('III'))", "expected": "3"},
+            {"input": "print(roman_to_int('IV'))", "expected": "4"},
+            {"input": "print(roman_to_int('IX'))", "expected": "9"},
+            {"input": "print(roman_to_int('LVIII'))", "expected": "58"},
+            {"input": "print(roman_to_int('MCMXCIV'))", "expected": "1994"},
+            {"input": "print(roman_to_int('I'))", "expected": "1"},
+            {"input": "print(roman_to_int('MMMCMXCIX'))", "expected": "3999"},
+            {"input": "print(roman_to_int('XL'))", "expected": "40"},
+            {"input": "print(roman_to_int('XC'))", "expected": "90"},
+            {"input": "print(roman_to_int('CD'))", "expected": "400"},
+            {"input": "print(roman_to_int('CM'))", "expected": "900"},
+        ]
+    },
+    # ─── 第 13 题：多数元素 ───
+    {
+        "title": "多数元素",
+        "slug": "majority-element",
+        "difficulty": "Easy",
+        "category": "数组",
+        "description": """## 多数元素
+
+给定一个大小为 `n` 的数组 `nums`，返回其中的**多数元素**。多数元素是指在数组中出现次数 **大于** `⌊n/2⌋` 的元素。
+
+你可以假设给定的数组总是存在多数元素。
+
+### 示例
+
+```
+输入：nums = [3,2,3]              输出：3
+输入：nums = [2,2,1,1,1,2,2]      输出：2
+```
+
+### 进阶
+尝试设计时间复杂度为 O(n)、空间复杂度为 O(1) 的算法（摩尔投票法）。""",
+        "starter_code": "def majority_element(nums):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(majority_element([3,2,3]))", "expected": "3"},
+            {"input": "print(majority_element([2,2,1,1,1,2,2]))", "expected": "2"},
+            {"input": "print(majority_element([1]))", "expected": "1"},
+            {"input": "print(majority_element([1,1,1,1,2,3,4]))", "expected": "1"},
+            {"input": "print(majority_element([5,5,5,5,5]))", "expected": "5"},
+            {"input": "print(majority_element([-1,-1,-1,2,3]))", "expected": "-1"},
+            {"input": "print(majority_element([1000000,1000000,2]))", "expected": "1000000"},
+        ]
+    },
+    # ─── 第 14 题：移动零 ───
+    {
+        "title": "移动零",
+        "slug": "move-zeroes",
+        "difficulty": "Easy",
+        "category": "双指针",
+        "description": """## 移动零
+
+给定一个数组 `nums`，编写一个函数将所有 `0` 移动到数组的末尾，同时保持非零元素的相对顺序。
+
+**请注意**：必须在不复制数组的情况下原地对数组进行操作。
+
+### 示例
+
+```
+输入：nums = [0,1,0,3,12]
+输出：[1,3,12,0,0]
+```
+
+```
+输入：nums = [0]
+输出：[0]
+```""",
+        "starter_code": "def move_zeroes(nums):\n    # 原地修改 nums（不要 return）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "nums = [0,1,0,3,12]\nmove_zeroes(nums)\nprint(nums)", "expected": "[1, 3, 12, 0, 0]"},
+            {"input": "nums = [0]\nmove_zeroes(nums)\nprint(nums)", "expected": "[0]"},
+            {"input": "nums = [1,2,3]\nmove_zeroes(nums)\nprint(nums)", "expected": "[1, 2, 3]"},
+            {"input": "nums = [0,0,0,1]\nmove_zeroes(nums)\nprint(nums)", "expected": "[1, 0, 0, 0]"},
+            {"input": "nums = [1,0,2,0,3]\nmove_zeroes(nums)\nprint(nums)", "expected": "[1, 2, 3, 0, 0]"},
+            {"input": "nums = [0,0,0,0]\nmove_zeroes(nums)\nprint(nums)", "expected": "[0, 0, 0, 0]"},
+            {"input": "nums = [4,2,4,0,0,3,0,5,1,0]\nmove_zeroes(nums)\nprint(nums)", "expected": "[4, 2, 4, 3, 5, 1, 0, 0, 0, 0]"},
+        ]
+    },
+    # ─── 第 15 题：存在重复元素 ───
+    {
+        "title": "存在重复元素",
+        "slug": "contains-duplicate",
+        "difficulty": "Easy",
+        "category": "哈希",
+        "description": """## 存在重复元素
+
+给你一个整数数组 `nums`。如果任一值在数组中出现 **至少两次** ，返回 `True`；如果数组中每个元素互不相同，返回 `False`。
+
+### 示例
+
+```
+输入：nums = [1,2,3,1]        输出：True
+输入：nums = [1,2,3,4]        输出：False
+输入：nums = [1,1,1,3,3,4,3,2,4,2]  输出：True
+```""",
+        "starter_code": "def contains_duplicate(nums):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(contains_duplicate([1,2,3,1]))", "expected": "True"},
+            {"input": "print(contains_duplicate([1,2,3,4]))", "expected": "False"},
+            {"input": "print(contains_duplicate([1,1,1,3,3,4,3,2,4,2]))", "expected": "True"},
+            {"input": "print(contains_duplicate([]))", "expected": "False"},
+            {"input": "print(contains_duplicate([1]))", "expected": "False"},
+            {"input": "print(contains_duplicate([-1,-1]))", "expected": "True"},
+            {"input": "print(contains_duplicate([0,0,0,0,0]))", "expected": "True"},
+        ]
+    },
+    # ─── 第 16 题：链表的中间节点 ───
+    {
+        "title": "链表的中间节点",
+        "slug": "middle-of-linked-list",
+        "difficulty": "Easy",
+        "category": "链表",
+        "description": """## 链表的中间节点
+
+给你单链表的头结点 `head`，返回链表的**中间结点**。如果有两个中间结点，则返回**第二个**中间结点。
+
+### 示例
+
+```
+输入：head = [1,2,3,4,5]
+输出：3
+解释：链表中间节点的值为 3
+```
+
+```
+输入：head = [1,2,3,4,5,6]
+输出：4
+解释：链表有两个中间节点 3 和 4，返回第二个节点 4
+```
+
+### 提示
+- 使用快慢双指针，快指针每次走 2 步，慢指针走 1 步""",
+        "starter_code": """class ListNode:
+    def __init__(self, val=0, nxt=None):
+        self.val = val
+        self.next = nxt
+
+def build_list(arr):
+    \"\"\"测试用：把数组转成链表，返回头节点\"\"\"
+    if not arr: return None
+    head = ListNode(arr[0])
+    cur = head
+    for v in arr[1:]:
+        cur.next = ListNode(v)
+        cur = cur.next
+    return head
+
+def middle_node(head):
+    # 在这里写你的代码，返回中间节点
+    pass
+""",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "h = build_list([1,2,3,4,5])\nprint(middle_node(h).val)", "expected": "3"},
+            {"input": "h = build_list([1,2,3,4,5,6])\nprint(middle_node(h).val)", "expected": "4"},
+            {"input": "h = build_list([1])\nprint(middle_node(h).val)", "expected": "1"},
+            {"input": "h = build_list([1,2])\nprint(middle_node(h).val)", "expected": "2"},
+            {"input": "h = build_list([1,2,3])\nprint(middle_node(h).val)", "expected": "2"},
+            {"input": "h = build_list([10,20,30,40,50,60,70])\nprint(middle_node(h).val)", "expected": "40"},
+        ]
+    },
+    # ─── 第 17 题：环形链表 ───
+    {
+        "title": "环形链表",
+        "slug": "linked-list-cycle",
+        "difficulty": "Easy",
+        "category": "链表",
+        "description": """## 环形链表
+
+给你一个链表的头节点 `head`，判断链表中是否有环。
+
+如果链表中存在某个节点，可以通过连续跟踪 `next` 指针再次到达该节点，则链表中存在环。
+
+如果链表中存在环，则返回 `True`。否则，返回 `False`。
+
+### 示例
+
+```
+输入：head = [3,2,0,-4]，尾节点连到下标 1
+输出：True
+```
+
+```
+输入：head = [1,2]，无环
+输出：False
+```
+
+### 提示
+经典 Floyd 判圈算法：快慢双指针，如果有环必然相遇""",
+        "starter_code": """class ListNode:
+    def __init__(self, val=0, nxt=None):
+        self.val = val
+        self.next = nxt
+
+def build_with_cycle(arr, pos):
+    \"\"\"测试用：构造带环链表，pos=-1 表示无环\"\"\"
+    if not arr: return None
+    nodes = [ListNode(v) for v in arr]
+    for i in range(len(nodes) - 1):
+        nodes[i].next = nodes[i+1]
+    if pos >= 0:
+        nodes[-1].next = nodes[pos]
+    return nodes[0]
+
+def has_cycle(head):
+    # 在这里写你的代码
+    pass
+""",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(has_cycle(build_with_cycle([3,2,0,-4], 1)))", "expected": "True"},
+            {"input": "print(has_cycle(build_with_cycle([1,2], 0)))", "expected": "True"},
+            {"input": "print(has_cycle(build_with_cycle([1], -1)))", "expected": "False"},
+            {"input": "print(has_cycle(build_with_cycle([1,2,3,4,5], -1)))", "expected": "False"},
+            {"input": "print(has_cycle(build_with_cycle([], -1)))", "expected": "False"},
+            {"input": "print(has_cycle(build_with_cycle([1,2,3], 2)))", "expected": "True"},
+        ]
+    },
+    # ─── 第 18 题：对称二叉树 ───
+    {
+        "title": "对称二叉树",
+        "slug": "symmetric-tree",
+        "difficulty": "Easy",
+        "category": "树",
+        "description": """## 对称二叉树
+
+给你一个二叉树的根节点 `root`，检查它是否轴对称。
+
+### 示例
+
+```
+输入：root = [1,2,2,3,4,4,3]
+输出：True
+       1
+      / \\
+     2   2
+    / \\ / \\
+   3  4 4  3
+```
+
+```
+输入：root = [1,2,2,null,3,null,3]
+输出：False
+```""",
+        "starter_code": """class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def build_tree(arr):
+    \"\"\"测试用：从层次遍历数组构造二叉树，None 代表空\"\"\"
+    if not arr: return None
+    root = TreeNode(arr[0])
+    queue = [root]
+    i = 1
+    while queue and i < len(arr):
+        node = queue.pop(0)
+        if i < len(arr) and arr[i] is not None:
+            node.left = TreeNode(arr[i])
+            queue.append(node.left)
+        i += 1
+        if i < len(arr) and arr[i] is not None:
+            node.right = TreeNode(arr[i])
+            queue.append(node.right)
+        i += 1
+    return root
+
+def is_symmetric(root):
+    # 在这里写你的代码
+    pass
+""",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(is_symmetric(build_tree([1,2,2,3,4,4,3])))", "expected": "True"},
+            {"input": "print(is_symmetric(build_tree([1,2,2,None,3,None,3])))", "expected": "False"},
+            {"input": "print(is_symmetric(build_tree([1])))", "expected": "True"},
+            {"input": "print(is_symmetric(build_tree([])))", "expected": "True"},
+            {"input": "print(is_symmetric(build_tree([1,2,3])))", "expected": "False"},
+            {"input": "print(is_symmetric(build_tree([1,2,2])))", "expected": "True"},
+        ]
+    },
+    # ─── 第 19 题：相同的树 ───
+    {
+        "title": "相同的树",
+        "slug": "same-tree",
+        "difficulty": "Easy",
+        "category": "树",
+        "description": """## 相同的树
+
+给你两棵二叉树的根节点 `p` 和 `q`，编写一个函数来检验这两棵树是否相同。
+
+如果两个树在**结构上**相同，并且节点具有**相同的值**，则认为它们是相同的。
+
+### 示例
+
+```
+输入：p = [1,2,3], q = [1,2,3]    输出：True
+输入：p = [1,2], q = [1,null,2]   输出：False
+输入：p = [1,2,1], q = [1,1,2]    输出：False
+```""",
+        "starter_code": """class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def build_tree(arr):
+    if not arr: return None
+    root = TreeNode(arr[0])
+    queue = [root]
+    i = 1
+    while queue and i < len(arr):
+        node = queue.pop(0)
+        if i < len(arr) and arr[i] is not None:
+            node.left = TreeNode(arr[i])
+            queue.append(node.left)
+        i += 1
+        if i < len(arr) and arr[i] is not None:
+            node.right = TreeNode(arr[i])
+            queue.append(node.right)
+        i += 1
+    return root
+
+def is_same_tree(p, q):
+    # 在这里写你的代码
+    pass
+""",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(is_same_tree(build_tree([1,2,3]), build_tree([1,2,3])))", "expected": "True"},
+            {"input": "print(is_same_tree(build_tree([1,2]), build_tree([1,None,2])))", "expected": "False"},
+            {"input": "print(is_same_tree(build_tree([1,2,1]), build_tree([1,1,2])))", "expected": "False"},
+            {"input": "print(is_same_tree(build_tree([]), build_tree([])))", "expected": "True"},
+            {"input": "print(is_same_tree(build_tree([1]), build_tree([])))", "expected": "False"},
+            {"input": "print(is_same_tree(build_tree([1,2,3,4,5]), build_tree([1,2,3,4,5])))", "expected": "True"},
+        ]
+    },
+    # ─── 第 20 题：第一个错误的版本 ───
+    {
+        "title": "第一个错误的版本",
+        "slug": "first-bad-version",
+        "difficulty": "Easy",
+        "category": "二分查找",
+        "description": """## 第一个错误的版本
+
+你是产品经理，目前正在带领一个团队开发新产品。不幸的是，你的产品的最新版本没有通过质量检测。由于每个版本都是基于之前的版本开发的，所以错误版本之后的所有版本都是错的。
+
+假设你有 `n` 个版本 `[1, 2, ..., n]`，请找出导致之后所有版本出错的第一个错误的版本。
+
+你可以通过调用 `is_bad_version(version)` 接口来判断版本号 `version` 是否在单元测试中出错。实现一个函数来查找第一个错误的版本。**应该尽量减少对该接口的调用次数。**
+
+### 示例
+
+```
+输入：n = 5, bad = 4
+输出：4
+解释：
+调用 is_bad_version(3) -> False
+调用 is_bad_version(5) -> True
+调用 is_bad_version(4) -> True
+所以，4 是第一个错误的版本
+```
+
+### 提示
+经典二分查找题。`n` 可能很大，所以线性扫描会超时。""",
+        "starter_code": """# 注意：FIRST_BAD 由测试用例设置，is_bad_version 已经定义好
+FIRST_BAD = 1
+def is_bad_version(version):
+    return version >= FIRST_BAD
+
+def first_bad_version(n):
+    # 在这里写你的代码（用二分查找）
+    pass
+""",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "FIRST_BAD = 4\nprint(first_bad_version(5))", "expected": "4"},
+            {"input": "FIRST_BAD = 1\nprint(first_bad_version(1))", "expected": "1"},
+            {"input": "FIRST_BAD = 100\nprint(first_bad_version(100))", "expected": "100"},
+            {"input": "FIRST_BAD = 1\nprint(first_bad_version(10))", "expected": "1"},
+            {"input": "FIRST_BAD = 50\nprint(first_bad_version(100))", "expected": "50"},
+            {"input": "FIRST_BAD = 9999\nprint(first_bad_version(10000))", "expected": "9999"},
+        ]
+    },
+    # ─── 第 21 题：二分查找 (Medium) ───
+    {
+        "title": "二分查找",
+        "slug": "binary-search",
+        "difficulty": "Medium",
+        "category": "二分查找",
+        "description": """## 二分查找
+
+给定一个 **n 个元素有序的（升序）**整型数组 `nums` 和一个目标值 `target`，写一个函数搜索 `nums` 中的 `target`，如果目标值存在返回下标，否则返回 `-1`。
+
+你必须编写一个具有 `O(log n)` 时间复杂度的算法。
+
+### 示例
+
+```
+输入：nums = [-1,0,3,5,9,12], target = 9   输出：4
+输入：nums = [-1,0,3,5,9,12], target = 2   输出：-1
+```""",
+        "starter_code": "def search(nums, target):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(search([-1,0,3,5,9,12], 9))", "expected": "4"},
+            {"input": "print(search([-1,0,3,5,9,12], 2))", "expected": "-1"},
+            {"input": "print(search([5], 5))", "expected": "0"},
+            {"input": "print(search([5], 3))", "expected": "-1"},
+            {"input": "print(search([], 5))", "expected": "-1"},
+            {"input": "print(search([1,2,3,4,5,6,7,8,9,10], 1))", "expected": "0"},
+            {"input": "print(search([1,2,3,4,5,6,7,8,9,10], 10))", "expected": "9"},
+            {"input": "print(search([1,2,3,4,5,6,7,8,9,10], 11))", "expected": "-1"},
+            {"input": "print(search([-100,-50,0,50,100], -50))", "expected": "1"},
+        ]
+    },
+    # ─── 第 22 题：三数之和 ───
+    {
+        "title": "三数之和",
+        "slug": "three-sum",
+        "difficulty": "Medium",
+        "category": "双指针",
+        "description": """## 三数之和
+
+给你一个整数数组 `nums`，判断是否存在三元组 `[nums[i], nums[j], nums[k]]` 满足 `i != j、i != k 且 j != k`，同时还满足 `nums[i] + nums[j] + nums[k] == 0`。
+
+请你返回所有和为 `0` 且**不重复**的三元组。
+
+**注意**：答案中**不可以包含重复**的三元组。返回结果按每个三元组内升序、三元组之间升序排列。
+
+### 示例
+
+```
+输入：nums = [-1,0,1,2,-1,-4]
+输出：[[-1, -1, 2], [-1, 0, 1]]
+```
+
+```
+输入：nums = [0,1,1]
+输出：[]
+```
+
+### 提示
+先排序，然后固定一个元素，剩下两个用双指针。""",
+        "starter_code": "def three_sum(nums):\n    # 返回所有去重后的三元组，三元组内升序、之间升序\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(three_sum([-1,0,1,2,-1,-4]))", "expected": "[[-1, -1, 2], [-1, 0, 1]]"},
+            {"input": "print(three_sum([0,1,1]))", "expected": "[]"},
+            {"input": "print(three_sum([0,0,0]))", "expected": "[[0, 0, 0]]"},
+            {"input": "print(three_sum([]))", "expected": "[]"},
+            {"input": "print(three_sum([1,2,-2,-1]))", "expected": "[]"},
+            {"input": "print(three_sum([-2,0,1,1,2]))", "expected": "[[-2, 0, 2], [-2, 1, 1]]"},
+            {"input": "print(three_sum([0,0,0,0]))", "expected": "[[0, 0, 0]]"},
+        ]
+    },
+    # ─── 第 23 题：最大子数组和 ───
+    {
+        "title": "最大子数组和",
+        "slug": "maximum-subarray",
+        "difficulty": "Medium",
+        "category": "动态规划",
+        "description": """## 最大子数组和
+
+给你一个整数数组 `nums`，请你找出一个具有**最大和**的连续子数组（子数组最少包含一个元素），返回其最大和。
+
+**子数组**是数组中的一个连续部分。
+
+### 示例
+
+```
+输入：nums = [-2,1,-3,4,-1,2,1,-5,4]
+输出：6
+解释：连续子数组 [4,-1,2,1] 的和最大，为 6
+```
+
+```
+输入：nums = [1]      输出：1
+输入：nums = [5,4,-1,7,8]   输出：23
+```
+
+### 提示
+经典 Kadane 算法：`dp[i] = max(dp[i-1] + nums[i], nums[i])`""",
+        "starter_code": "def max_sub_array(nums):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(max_sub_array([-2,1,-3,4,-1,2,1,-5,4]))", "expected": "6"},
+            {"input": "print(max_sub_array([1]))", "expected": "1"},
+            {"input": "print(max_sub_array([5,4,-1,7,8]))", "expected": "23"},
+            {"input": "print(max_sub_array([-1]))", "expected": "-1"},
+            {"input": "print(max_sub_array([-2,-3,-1,-5]))", "expected": "-1"},
+            {"input": "print(max_sub_array([1,2,3,4,5]))", "expected": "15"},
+            {"input": "print(max_sub_array([0,0,0,0]))", "expected": "0"},
+            {"input": "print(max_sub_array([-1,-2,3,-4,5,-6,7]))", "expected": "7"},
+        ]
+    },
+    # ─── 第 24 题：跳跃游戏 ───
+    {
+        "title": "跳跃游戏",
+        "slug": "jump-game",
+        "difficulty": "Medium",
+        "category": "贪心",
+        "description": """## 跳跃游戏
+
+给定一个非负整数数组 `nums`，你最初位于数组的**第一个下标**。
+
+数组中的每个元素代表你在该位置可以**跳跃的最大长度**。
+
+判断你是否能够到达最后一个下标，如果可以，返回 `True`；否则，返回 `False`。
+
+### 示例
+
+```
+输入：nums = [2,3,1,1,4]   输出：True
+解释：可以先跳 1 步，从下标 0 到达下标 1, 然后再从下标 1 跳 3 步到达最后一个下标
+```
+
+```
+输入：nums = [3,2,1,0,4]   输出：False
+解释：无论怎样，总会到达下标为 3 的位置。但该下标的最大跳跃长度是 0，所以你永远不可能到达最后一个下标
+```
+
+### 提示
+贪心：维护"能到达的最远位置"。""",
+        "starter_code": "def can_jump(nums):\n    # 在这里写你的代码\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(can_jump([2,3,1,1,4]))", "expected": "True"},
+            {"input": "print(can_jump([3,2,1,0,4]))", "expected": "False"},
+            {"input": "print(can_jump([0]))", "expected": "True"},
+            {"input": "print(can_jump([1,0,1]))", "expected": "False"},
+            {"input": "print(can_jump([5,0,0,0,0]))", "expected": "True"},
+            {"input": "print(can_jump([1,1,1,1]))", "expected": "True"},
+            {"input": "print(can_jump([2,0,0]))", "expected": "True"},
+            {"input": "print(can_jump([0,1]))", "expected": "False"},
+        ]
+    },
+    # ─── 第 25 题：搜索旋转排序数组 ───
+    {
+        "title": "搜索旋转排序数组",
+        "slug": "search-rotated-sorted-array",
+        "difficulty": "Medium",
+        "category": "二分查找",
+        "description": """## 搜索旋转排序数组
+
+整数数组 `nums` 按升序排列，数组中的值**互不相同**。
+
+在传递给函数之前，`nums` 在预先未知的某个下标 `k` 处经过了**旋转**，使数组变为 `[nums[k], nums[k+1], ..., nums[n-1], nums[0], nums[1], ..., nums[k-1]]`（下标从 0 开始计数）。
+
+给你旋转后的数组 `nums` 和一个整数 `target`，如果 `nums` 中存在这个目标值 `target`，则返回它的下标，否则返回 `-1`。
+
+你必须设计一个时间复杂度为 `O(log n)` 的算法解决此问题。
+
+### 示例
+
+```
+输入：nums = [4,5,6,7,0,1,2], target = 0  输出：4
+输入：nums = [4,5,6,7,0,1,2], target = 3  输出：-1
+输入：nums = [1], target = 0              输出：-1
+```""",
+        "starter_code": "def search_rotated(nums, target):\n    # 在这里写你的代码（O(log n)）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(search_rotated([4,5,6,7,0,1,2], 0))", "expected": "4"},
+            {"input": "print(search_rotated([4,5,6,7,0,1,2], 3))", "expected": "-1"},
+            {"input": "print(search_rotated([1], 0))", "expected": "-1"},
+            {"input": "print(search_rotated([1], 1))", "expected": "0"},
+            {"input": "print(search_rotated([1,2,3,4,5], 3))", "expected": "2"},
+            {"input": "print(search_rotated([5,1,2,3,4], 1))", "expected": "1"},
+            {"input": "print(search_rotated([3,4,5,1,2], 5))", "expected": "2"},
+            {"input": "print(search_rotated([], 5))", "expected": "-1"},
+        ]
+    },
+    # ─── 第 26 题：全排列 ───
+    {
+        "title": "全排列",
+        "slug": "permutations",
+        "difficulty": "Medium",
+        "category": "回溯",
+        "description": """## 全排列
+
+给定一个**不含重复数字**的数组 `nums`，返回其 **所有可能的全排列**。你可以**按任意顺序**返回答案。
+
+为了便于测试，请按字典序升序返回。
+
+### 示例
+
+```
+输入：nums = [1,2,3]
+输出：[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
+```
+
+```
+输入：nums = [0,1]   输出：[[0,1],[1,0]]
+输入：nums = [1]     输出：[[1]]
+```""",
+        "starter_code": "def permute(nums):\n    # 返回排序后的全排列\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(permute([1,2,3]))", "expected": "[[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]"},
+            {"input": "print(permute([0,1]))", "expected": "[[0, 1], [1, 0]]"},
+            {"input": "print(permute([1]))", "expected": "[[1]]"},
+            {"input": "print(permute([1,2]))", "expected": "[[1, 2], [2, 1]]"},
+            {"input": "print(len(permute([1,2,3,4])))", "expected": "24"},
+            {"input": "print(permute([5,6,7]))", "expected": "[[5, 6, 7], [5, 7, 6], [6, 5, 7], [6, 7, 5], [7, 5, 6], [7, 6, 5]]"},
+        ]
+    },
+    # ─── 第 27 题：子集 ───
+    {
+        "title": "子集",
+        "slug": "subsets",
+        "difficulty": "Medium",
+        "category": "回溯",
+        "description": """## 子集
+
+给你一个整数数组 `nums`，数组中的元素**互不相同**。返回该数组所有可能的**子集**（幂集）。
+
+解集**不能**包含重复的子集。你可以按**任意顺序**返回解集。
+
+为便于测试，请按"长度升序、相同长度内字典序"排列返回。
+
+### 示例
+
+```
+输入：nums = [1,2,3]
+输出：[[], [1], [2], [3], [1, 2], [1, 3], [2, 3], [1, 2, 3]]
+```""",
+        "starter_code": "def subsets(nums):\n    # 返回排序后的所有子集\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(subsets([1,2,3]))", "expected": "[[], [1], [2], [3], [1, 2], [1, 3], [2, 3], [1, 2, 3]]"},
+            {"input": "print(subsets([0]))", "expected": "[[], [0]]"},
+            {"input": "print(subsets([]))", "expected": "[[]]"},
+            {"input": "print(subsets([1,2]))", "expected": "[[], [1], [2], [1, 2]]"},
+            {"input": "print(len(subsets([1,2,3,4])))", "expected": "16"},
+            {"input": "print(len(subsets([1,2,3,4,5])))", "expected": "32"},
+        ]
+    },
+    # ─── 第 28 题：岛屿数量 ───
+    {
+        "title": "岛屿数量",
+        "slug": "number-of-islands",
+        "difficulty": "Medium",
+        "category": "图论",
+        "description": """## 岛屿数量
+
+给你一个由 `'1'`（陆地）和 `'0'`（水）组成的的二维网格，请你计算网格中**岛屿的数量**。
+
+岛屿总是被水包围，并且每座岛屿只能由**水平方向和/或竖直方向**上相邻的陆地连接形成。
+
+此外，你可以假设该网格的四条边均被水包围。
+
+### 示例
+
+```
+输入：grid = [
+  ["1","1","1","1","0"],
+  ["1","1","0","1","0"],
+  ["1","1","0","0","0"],
+  ["0","0","0","0","0"]
+]
+输出：1
+```
+
+```
+输入：grid = [
+  ["1","1","0","0","0"],
+  ["1","1","0","0","0"],
+  ["0","0","1","0","0"],
+  ["0","0","0","1","1"]
+]
+输出：3
+```""",
+        "starter_code": "def num_islands(grid):\n    # 在这里写你的代码（DFS / BFS / 并查集均可）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(num_islands([['1','1','1','1','0'],['1','1','0','1','0'],['1','1','0','0','0'],['0','0','0','0','0']]))", "expected": "1"},
+            {"input": "print(num_islands([['1','1','0','0','0'],['1','1','0','0','0'],['0','0','1','0','0'],['0','0','0','1','1']]))", "expected": "3"},
+            {"input": "print(num_islands([['0']]))", "expected": "0"},
+            {"input": "print(num_islands([['1']]))", "expected": "1"},
+            {"input": "print(num_islands([['1','0','1','0','1']]))", "expected": "3"},
+            {"input": "print(num_islands([['1','1','1'],['1','1','1'],['1','1','1']]))", "expected": "1"},
+            {"input": "print(num_islands([]))", "expected": "0"},
+        ]
+    },
+    # ─── 第 29 题：最长回文子串 ───
+    {
+        "title": "最长回文子串",
+        "slug": "longest-palindromic-substring",
+        "difficulty": "Medium",
+        "category": "字符串",
+        "description": """## 最长回文子串
+
+给你一个字符串 `s`，找到 `s` 中**最长的**回文子串。如果有多个相同长度的回文子串，返回**最先出现**的那个。
+
+### 示例
+
+```
+输入：s = "babad"     输出："bab"  （"aba" 也是合法答案）
+输入：s = "cbbd"      输出："bb"
+```
+
+### 提示
+中心扩展法：枚举每个可能的"中心"（奇数长度以单字符为中心、偶数长度以两字符之间为中心），向两侧扩展。""",
+        "starter_code": "def longest_palindrome(s):\n    # 返回 s 中最长的回文子串（多个等长返回最先出现的）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(longest_palindrome('babad'))", "expected": "bab"},
+            {"input": "print(longest_palindrome('cbbd'))", "expected": "bb"},
+            {"input": "print(longest_palindrome('a'))", "expected": "a"},
+            {"input": "print(longest_palindrome('ac'))", "expected": "a"},
+            {"input": "print(longest_palindrome('aaaa'))", "expected": "aaaa"},
+            {"input": "print(longest_palindrome('racecar'))", "expected": "racecar"},
+            {"input": "print(longest_palindrome('abcdefg'))", "expected": "a"},
+            {"input": "print(longest_palindrome('abacdfgdcaba'))", "expected": "aba"},
+        ]
+    },
+    # ─── 第 30 题：课程表 (拓扑排序) ───
+    {
+        "title": "课程表",
+        "slug": "course-schedule",
+        "difficulty": "Medium",
+        "category": "图论",
+        "description": """## 课程表
+
+你这个学期必须选修 `numCourses` 门课程，记为 `0` 到 `numCourses - 1`。
+
+在选修某些课程之前需要一些**先修课程**。先修课程按数组 `prerequisites` 给出，其中 `prerequisites[i] = [ai, bi]`，表示如果要学习课程 `ai` 则**必须**先学习课程 `bi`。
+
+请你判断是否可能完成所有课程的学习？如果可以，返回 `True`；否则，返回 `False`。
+
+### 示例
+
+```
+输入：numCourses = 2, prerequisites = [[1,0]]
+输出：True
+解释：先学课程 0，然后再学课程 1，可行
+```
+
+```
+输入：numCourses = 2, prerequisites = [[1,0],[0,1]]
+输出：False
+解释：循环依赖，无法完成
+```
+
+### 提示
+本质是判断有向图是否有环（拓扑排序 / DFS 染色）。""",
+        "starter_code": "def can_finish(num_courses, prerequisites):\n    # 在这里写你的代码（判断有向图是否有环）\n    pass\n",
+        "helper_code": "",
+        "test_cases": [
+            {"input": "print(can_finish(2, [[1,0]]))", "expected": "True"},
+            {"input": "print(can_finish(2, [[1,0],[0,1]]))", "expected": "False"},
+            {"input": "print(can_finish(1, []))", "expected": "True"},
+            {"input": "print(can_finish(5, [[1,0],[2,1],[3,2],[4,3]]))", "expected": "True"},
+            {"input": "print(can_finish(3, [[0,1],[1,2],[2,0]]))", "expected": "False"},
+            {"input": "print(can_finish(4, [[1,0],[2,0],[3,1],[3,2]]))", "expected": "True"},
+            {"input": "print(can_finish(2, []))", "expected": "True"},
+        ]
     }
 ]
