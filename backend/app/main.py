@@ -91,11 +91,19 @@ async def lifespan(app: FastAPI):
     _run_alembic_upgrade()
     db = SessionLocal()
     try:
-        if db.query(Problem).count() == 0:
-            seeds = _get_localized_seeds(settings.SEED_LANGUAGE)
-            for p in seeds:
+        # Incremental seeding: add any seeds whose slug isn't already in the DB.
+        # The previous "if count == 0: seed all" branch silently dropped new
+        # seeds added by later releases because count > 0 after first deploy.
+        seeds = _get_localized_seeds(settings.SEED_LANGUAGE)
+        existing_slugs = {row[0] for row in db.query(Problem.slug).all()}
+        added = 0
+        for p in seeds:
+            if p["slug"] not in existing_slugs:
                 db.add(Problem(**p))
+                added += 1
+        if added:
             db.commit()
+            logger.info(f"Seeded {added} new problem(s)")
     finally:
         db.close()
     logger.info("CodingBot started")
