@@ -37,6 +37,7 @@ const FEATURE_ICONS = [
 export default function LandingPage() {
   const { t } = useTranslation();
   const [keysExpanded, setKeysExpanded] = useState(false);
+  const [showContact, setShowContact] = useState(false);
 
   const features = [0, 1, 2, 3].map((i) => ({
     icon: FEATURE_ICONS[i],
@@ -245,10 +246,55 @@ export default function LandingPage() {
           <Link to="/privacy" className="hover:text-gray-300 transition-colors">隐私政策</Link>
           <Link to="/terms" className="hover:text-gray-300 transition-colors">服务条款</Link>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" className="hover:text-gray-300 transition-colors">GitHub</a>
-          <a href="mailto:shiningwood2026@shining-wood.com" className="hover:text-gray-300 transition-colors">反馈邮箱</a>
+          <button type="button" onClick={() => setShowContact(true)} className="hover:text-gray-300 transition-colors">联系我们</button>
           <span className="text-gray-600">MIT License · BYOK · Open Source · by shiningwood</span>
         </div>
       </footer>
+
+      {/* ─── Contact modal ───────────────────────────────────── */}
+      {showContact && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          onClick={() => setShowContact(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-title"
+            className="relative bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-sm border border-white/[0.08] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="contact-title" className="text-base font-semibold text-white mb-4">联系我们</h3>
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="text-gray-500 shrink-0">邮箱</span>
+                <a
+                  href="mailto:shiningwood2026@shining-wood.com"
+                  className="text-violet-300 hover:text-violet-200 break-all"
+                >
+                  shiningwood2026@shining-wood.com
+                </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-gray-500 shrink-0">电话</span>
+                <a
+                  href="tel:+610431836686"
+                  className="text-violet-300 hover:text-violet-200"
+                >
+                  +61 0431 836 686
+                </a>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => setShowContact(false)}
+              className="mt-5 w-full py-2 text-sm text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
