@@ -183,6 +183,30 @@ check "DELETE returns 204" \
 check "GET deleted id returns 404" \
     bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/$NEW_ID') == '404' ]]"
 
+# ─── 5b. Problem privacy (user-created problems must not leak across accounts) ───
+echo "▶ problem privacy"
+SECOND_TOKENS=$(curl -sS -X POST "$BASE/api/auth/register" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"other-priv@test.com","password":"otherpass","nickname":"other"}')
+ACCESS2=$(echo "$SECOND_TOKENS" | jq -r '.access_token')
+PRIV_ID=$(curl -sS -X POST "$BASE/api/problems/" \
+    -H "Authorization: Bearer $ACCESS" -H "Content-Type: application/json" \
+    -d '{"title":"Priv","slug":"priv-prob-test","difficulty":"Easy","category":"x","description":"d","starter_code":"c","test_cases":[]}' | jq -r '.id')
+check "creator sees own private problem (200)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/'$PRIV_ID -H 'Authorization: Bearer $ACCESS') == '200' ]]"
+check "another user cannot see private problem (404)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/'$PRIV_ID -H 'Authorization: Bearer $ACCESS2') == '404' ]]"
+check "guest cannot see private problem (404)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' '$BASE/api/problems/'$PRIV_ID) == '404' ]]"
+check "another user cannot edit private problem (403)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X PUT '$BASE/api/problems/'$PRIV_ID -H 'Authorization: Bearer $ACCESS2' -H 'Content-Type: application/json' -d '{\"title\":\"hacked\"}') == '403' ]]"
+check "another user cannot delete private problem (403)" \
+    bash -c "[[ \$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE '$BASE/api/problems/'$PRIV_ID -H 'Authorization: Bearer $ACCESS2') == '403' ]]"
+check "private problem absent from another user's list" \
+    bash -c "[[ \$(curl -sS '$BASE/api/problems/' -H 'Authorization: Bearer $ACCESS2' | jq '[.[] | select(.id == '$PRIV_ID')] | length') == '0' ]]"
+# Cleanup
+curl -sS -X DELETE "$BASE/api/problems/$PRIV_ID" -H "Authorization: Bearer $ACCESS" > /dev/null
+
 # ─── 6. Structured logging ───
 echo "▶ logging"
 LOG_FILE="$LOG_DIR/codingbot.log"
