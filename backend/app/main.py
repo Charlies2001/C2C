@@ -99,7 +99,8 @@ async def lifespan(app: FastAPI):
         added = 0
         for p in seeds:
             if p["slug"] not in existing_slugs:
-                db.add(Problem(**p))
+                # Seed problems are official content, no owner, public to everyone.
+                db.add(Problem(**p, owner_id=None, is_public=True))
                 added += 1
         if added:
             db.commit()
