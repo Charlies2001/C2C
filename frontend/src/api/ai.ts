@@ -1,10 +1,11 @@
 import i18n from '../i18n';
 import type { UserProfile } from '../types/problem';
 import { authFetch } from './auth';
+import { userKey } from '../utils/storage';
 
 function getUserProfile(): UserProfile | null {
   try {
-    const stored = localStorage.getItem('user_profile');
+    const stored = localStorage.getItem(userKey('user_profile'));
     if (!stored) return null;
     const parsed = JSON.parse(stored);
     if (parsed && parsed.version === 1 && parsed.profile) {
