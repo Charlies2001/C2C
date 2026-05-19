@@ -9,6 +9,7 @@ import ActivityCalendar from '../components/ProblemList/ActivityCalendar';
 import NotebooksPanel from '../components/ProblemList/NotebooksPanel';
 import CreateProblemModal from '../components/CreateProblemModal';
 import ProfileSetupModal from '../components/ProfileSetupModal';
+import { userKey } from '../utils/storage';
 
 export default function ProblemListPage() {
   const { t } = useTranslation();
@@ -46,7 +47,7 @@ export default function ProblemListPage() {
 
   useEffect(() => {
     if (userProfile === null) {
-      const stored = localStorage.getItem('user_profile');
+      const stored = localStorage.getItem(userKey('user_profile'));
       if (!stored) setShowProfile(true);
     }
   }, [userProfile]);

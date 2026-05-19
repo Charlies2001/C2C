@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Problem, ProblemListItem, TestResult, ChatMessage, Collection, UserProfile, SolvedRecord } from '../types/problem';
 import { getTreeStageInfo } from '../components/GrowthTree/treeUtils';
 import { createSubmission, listSubmissions, type SubmissionRecord } from '../api/submissions';
+import { userKey, listUserKeysWithPrefix } from '../utils/storage';
 
 interface TeachingSection {
   title: string;
@@ -145,30 +146,26 @@ function saveChatToStorage(problemId: number, messages: ChatMessage[]) {
     ? messages.slice(-MAX_CHAT_MESSAGES)
     : messages;
   try {
-    localStorage.setItem(`chat_${problemId}`, JSON.stringify(toSave));
+    localStorage.setItem(userKey(`chat_${problemId}`), JSON.stringify(toSave));
   } catch (e) {
     // localStorage full — clear old chat data and retry
     _cleanupOldChatStorage();
     try {
-      localStorage.setItem(`chat_${problemId}`, JSON.stringify(toSave));
+      localStorage.setItem(userKey(`chat_${problemId}`), JSON.stringify(toSave));
     } catch {}
   }
 }
 
 function _cleanupOldChatStorage() {
-  const chatKeys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('chat_')) chatKeys.push(key);
-  }
-  // Remove oldest half of chat storage entries
+  // Only touch THIS user's chat keys — never delete other users' history.
+  const chatKeys = listUserKeysWithPrefix('chat_');
   const toRemove = chatKeys.slice(0, Math.ceil(chatKeys.length / 2));
   toRemove.forEach((key) => localStorage.removeItem(key));
 }
 
 function loadChatFromStorage(problemId: number): ChatMessage[] {
   try {
-    const stored = localStorage.getItem(`chat_${problemId}`);
+    const stored = localStorage.getItem(userKey(`chat_${problemId}`));
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     // Apply limit on load as well
@@ -184,12 +181,12 @@ function saveTeachingToStorage(problemId: number, sections: TeachingSection[], d
   const data: TeachingStorage = { version: 2, difficulty, sections };
   const serialized = JSON.stringify(data);
   try {
-    localStorage.setItem(`teaching_${problemId}`, serialized);
+    localStorage.setItem(userKey(`teaching_${problemId}`), serialized);
   } catch {
     // Likely QuotaExceededError — drop oldest half of teaching entries and retry once.
     _cleanupOldTeachingStorage(problemId);
     try {
-      localStorage.setItem(`teaching_${problemId}`, serialized);
+      localStorage.setItem(userKey(`teaching_${problemId}`), serialized);
     } catch {
       // Still failing — silently drop. Teaching content is regeneratable on demand.
     }
@@ -197,19 +194,15 @@ function saveTeachingToStorage(problemId: number, sections: TeachingSection[], d
 }
 
 function _cleanupOldTeachingStorage(keepProblemId: number) {
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('teaching_') && key !== `teaching_${keepProblemId}`) keys.push(key);
-  }
-  // Remove oldest half (key order is roughly insertion order in most browsers).
-  const toRemove = keys.slice(0, Math.ceil(keys.length / 2));
+  const keep = userKey(`teaching_${keepProblemId}`);
+  const all = listUserKeysWithPrefix('teaching_').filter((k) => k !== keep);
+  const toRemove = all.slice(0, Math.ceil(all.length / 2));
   toRemove.forEach((key) => localStorage.removeItem(key));
 }
 
 function loadTeachingFromStorage(problemId: number): { sections: TeachingSection[]; difficulty: string } {
   try {
-    const stored = localStorage.getItem(`teaching_${problemId}`);
+    const stored = localStorage.getItem(userKey(`teaching_${problemId}`));
     if (!stored) return { sections: [], difficulty: 'Medium' };
     const parsed = JSON.parse(stored);
     // v2 format: { version: 2, difficulty, sections }
@@ -227,12 +220,12 @@ function loadTeachingFromStorage(problemId: number): { sections: TeachingSection
 }
 
 function saveCollectionsToStorage(collections: Collection[]) {
-  localStorage.setItem('collections', JSON.stringify({ version: 1, collections }));
+  localStorage.setItem(userKey('collections'), JSON.stringify({ version: 1, collections }));
 }
 
 function loadCollectionsFromStorage(): Collection[] {
   try {
-    const stored = localStorage.getItem('collections');
+    const stored = localStorage.getItem(userKey('collections'));
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     if (parsed && parsed.version === 1) {
@@ -245,12 +238,12 @@ function loadCollectionsFromStorage(): Collection[] {
 }
 
 function saveProfileToStorage(profile: UserProfile) {
-  localStorage.setItem('user_profile', JSON.stringify({ version: 1, profile }));
+  localStorage.setItem(userKey('user_profile'), JSON.stringify({ version: 1, profile }));
 }
 
 function loadProfileFromStorage(): UserProfile | null {
   try {
-    const stored = localStorage.getItem('user_profile');
+    const stored = localStorage.getItem(userKey('user_profile'));
     if (!stored) return null;
     const parsed = JSON.parse(stored);
     if (parsed && parsed.version === 1 && parsed.profile) {
@@ -263,12 +256,12 @@ function loadProfileFromStorage(): UserProfile | null {
 }
 
 function saveHintsToStorage(problemId: number, hints: { level: number; content: string }[]) {
-  localStorage.setItem(`hints_${problemId}`, JSON.stringify(hints));
+  localStorage.setItem(userKey(`hints_${problemId}`), JSON.stringify(hints));
 }
 
 function loadHintsFromStorage(problemId: number): { level: number; content: string }[] {
   try {
-    const stored = localStorage.getItem(`hints_${problemId}`);
+    const stored = localStorage.getItem(userKey(`hints_${problemId}`));
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -276,12 +269,12 @@ function loadHintsFromStorage(problemId: number): { level: number; content: stri
 }
 
 function saveTreeProgressToStorage(records: SolvedRecord[]) {
-  localStorage.setItem('tree_progress', JSON.stringify({ version: 1, records }));
+  localStorage.setItem(userKey('tree_progress'), JSON.stringify({ version: 1, records }));
 }
 
 function loadTreeProgressFromStorage(): SolvedRecord[] {
   try {
-    const stored = localStorage.getItem('tree_progress');
+    const stored = localStorage.getItem(userKey('tree_progress'));
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     if (parsed && parsed.version === 1) return parsed.records || [];
@@ -435,7 +428,7 @@ export const useStore = create<AppState>((set, get) => ({
   clearHints: () => {
     const state = get();
     if (state.hintProblemId !== null) {
-      localStorage.removeItem(`hints_${state.hintProblemId}`);
+      localStorage.removeItem(userKey(`hints_${state.hintProblemId}`));
     }
     set({ hints: [], showHintNudge: false, consecutiveFailures: 0 });
   },

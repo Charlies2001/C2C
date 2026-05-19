@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { streamAIChat } from '../../api/ai';
+import { userKey } from '../../utils/storage';
 
 // AbortController ref for cancelling in-flight chat requests
 let chatAbortController: AbortController | null = null;
@@ -194,7 +195,7 @@ export default function AIChatPanel() {
               onClick={() => {
                 clearChat();
                 if (chatProblemId !== null) {
-                  localStorage.removeItem(`chat_${chatProblemId}`);
+                  localStorage.removeItem(userKey(`chat_${chatProblemId}`));
                 }
               }}
               disabled={isAILoading}
