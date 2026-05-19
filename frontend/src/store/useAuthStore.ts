@@ -70,6 +70,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     clearTokens();
     set({ user: null });
+    // Hard navigation so all in-memory state (useStore: chat / teaching /
+    // hints / collections / etc.) is wiped — switching accounts in the same
+    // tab otherwise leaves the previous user's chat panel etc. visible
+    // until the next problemId change re-triggers a load.
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   },
 
   refreshUser: async () => {
