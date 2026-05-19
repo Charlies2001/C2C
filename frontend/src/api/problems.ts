@@ -12,13 +12,16 @@ export async function fetchProblems(params?: {
   if (params?.difficulty) searchParams.set('difficulty', params.difficulty);
   if (params?.category) searchParams.set('category', params.category);
   const query = searchParams.toString();
-  const res = await fetch(`${BASE_URL}/problems/${query ? `?${query}` : ''}`);
+  // authFetch attaches the Bearer token when logged in and is a no-op
+  // (plain fetch) for guests. Without it, the server can never tell who's
+  // listing — every logged-in user's private problems would be filtered out.
+  const res = await authFetch(`${BASE_URL}/problems/${query ? `?${query}` : ''}`);
   if (!res.ok) throw new Error('Failed to fetch problems');
   return res.json();
 }
 
 export async function fetchProblem(id: number): Promise<Problem> {
-  const res = await fetch(`${BASE_URL}/problems/${id}`);
+  const res = await authFetch(`${BASE_URL}/problems/${id}`);
   if (!res.ok) throw new Error('Failed to fetch problem');
   return res.json();
 }
